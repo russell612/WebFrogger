@@ -18,13 +18,38 @@ function main() {
    */
 
   // initialises the types used for the game as well as state with its required values
-  type shape = "rect" | "circle";
   type key = "w" | "s" | "a" | "d";
-  type state = Readonly<{pos: Vec; tick: number ;gameOver: Boolean}>;
 
+  // Obstacle type with its corresponding attributes and types
+  type Obstacle = Readonly<{
+    id: string;
+    pos: Vec;
+    vel: Vec;
+    width: number;
+    height: number
+  }>;
+
+  // state type that includes states needed to transfer between ticks
+  type state = Readonly<{pos: Vec; time: number ;gameOver: Boolean, objCount: number, obstacles: ReadonlyArray<Obstacle>}>;
+
+  // Constant Storage
+  const Constants = {
+    CanvasSize: 600,
+    StartObstaclesCount: 10,
+    ObstaclesPerRow: 3,
+    MininumObstacleWidth: 100
+  } as const
 
   // adds the Move class and Tick class to ease in updating the state 
   class Move { constructor(public readonly x:number, public readonly y:number) {}};
+  // tick function to initiate updates to obstacle positioning
+  const tick = (s:state, elapsed: number) => {
+    return <state> {
+      ...s,
+      obstacles: s.obstacles.map(moveObs),
+      time: elapsed
+    }
+  }
   class Tick { constructor(public readonly time: number) {}};
 
   // Vector class that was referenced from the Asteroid game template. Helps in maintaining positioning of object that move 
@@ -46,15 +71,14 @@ function main() {
     static Zero = new Vec();
   }
 
-  const initState: state = {pos: new Vec(100, 550), tick: 0, gameOver: false};
+  // Initialises initial game state
 
   // Function to return the frog back to the opposite side of the canvas if it has passed through
   // the canvas boundaries
   const 
-  CanvasSize = 600,
   torusWrap = ({x,y}:Vec) => { 
     const wrap = (v:number) => 
-      v < 0 ? v + CanvasSize : v > CanvasSize ? v - CanvasSize : v;
+      v < 0 ? v + Constants.CanvasSize : v > Constants.CanvasSize ? v - Constants.CanvasSize : v;
     return new Vec(wrap(x),wrap(y))
   };
 
@@ -65,13 +89,67 @@ function main() {
      return e instanceof Move ? {...s,
       pos: torusWrap(s.pos.add(new Vec(e.x, e.y))),
      } :
-     {
-      ...s,
-      tick: s.tick + 10
-     }
+     tick(s, e.time);
   }
 
-  //const kb$ = fromEvent<KeyboardEvent>(document, "keydown").pipe(filter(({key}) => key === "s" || key === "w" || key === "a" || key === "d")); (deprecated)
+  // Function moveObs to move Obstacles
+  const moveObs = (o: Obstacle) => <Obstacle>{
+    ...o,
+    pos: torusWrap(o.pos.sub(o.vel))
+  }
+
+  // Function to create obstacle
+  const createObstacle = (type: "rect") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
+    <Obstacle> {
+      pos: pos,
+      vel: vel,
+      id: type + id,
+      width: width,
+      height: height
+    }
+
+    class RNG {
+      // LCG using GCC's constants
+      m = 0x80000000; // 2**31
+      a = 1103515245;
+      c = 12345;
+      state: number;
+      constructor(seed: number) {
+        this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
+      }
+      nextInt() {
+        this.state = (this.a * this.state + this.c) % this.m;
+        return this.state;
+      }
+      nextFloat() {
+        // returns in range [0,1]
+        return this.nextInt() / (this.m - 1);
+      }
+    }
+
+  const rng = new RNG(200);
+
+  const nextRandom = () => rng.nextFloat() * 50;
+  const nextRandomX = () => rng.nextFloat() * 600;
+
+
+  // Adds the obstacles to each row
+  const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => createObstacle("rect")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)))
+  const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => createObstacle("rect")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(2, 0)))
+  const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => createObstacle("rect")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(0.5, 0)))
+  const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => createObstacle("rect")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-1, 0)))
+  const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => createObstacle("rect")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(0.7, 0)))
+
+  // Concatenates all obstacles into one array
+  const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0);
+  // Initialises the initial state with said obstacles
+  const initState: state = {pos: new Vec(100, 550), time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles};
+
 
   /*
   observeKey function 
@@ -92,12 +170,29 @@ function main() {
   const moveUp = observeKey('keydown', 'w', () => new Move(0, -100));
   const moveDown = observeKey('keydown', 's', () => new Move(0, 100));
 
-  // updates the frogs position/ game state
+  // updates the frogs position and adds in Obstacles if not initialized, else it will update the new positioning
+  // of each obstacles per tick
   function updateState(state:state): void {
+    const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
     const frog = document.getElementById("frog")!;
     frog.setAttribute("cx", `${state.pos.x}`);
     frog.setAttribute("cy", `${state.pos.y}`);
     state.gameOver ? alert("Game Over") : null;  
+    state.obstacles.forEach(b => {
+      const createObstacleView = () => {
+        const v = document.createElementNS(svg.namespaceURI, "rect")!;
+        v.setAttribute("id", b.id);
+        v.classList.add("obstacle")
+        svg.appendChild(v)
+        return v;
+      }
+      const v = document.getElementById(b.id) || createObstacleView();
+      v.setAttribute("x", String(b.pos.x));
+      v.setAttribute("y", String(b.pos.y));
+      v.setAttribute("width", String(b.width));
+      v.setAttribute("height", String(b.height));
+      v.setAttribute("style", "fill: purple");
+    })
   }
 
   // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
@@ -141,27 +236,6 @@ function main() {
     "style",
     "fill: green; stroke: green; stroke-width: 1px;"
   );
-
-  function createObstacle(x: string, y: string, type: shape) {
-    if(type === "rect") {
-      const obstacle = document.createElementNS(svg.namespaceURI, "rect");
-      obstacle.setAttribute("width", "200");
-      obstacle.setAttribute("height", "80");
-      obstacle.setAttribute("x", x);
-      obstacle.setAttribute("y", y);
-      obstacle.setAttribute("style", "fill-opacity = 0");
-      svg.appendChild(obstacle)
-    }
-    else {
-      const obstacle = document.createElementNS(svg.namespaceURI, "circle");
-      obstacle.setAttribute("r", "50");
-      obstacle.setAttribute("cx", "100")
-      obstacle.setAttribute("x", x);
-      obstacle.setAttribute("y", y);
-      obstacle.setAttribute("style", "fill-opacity = 0");
-      svg.appendChild(obstacle)
-    }
-  }
   
   // appends each background element to the svgCanvas
   svg.appendChild(river);
