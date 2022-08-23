@@ -1,5 +1,6 @@
 import "./style.css";
-import {} from "rxjs";
+import { interval, fromEvent, zip, from, merge } from "rxjs";
+import { map, filter, take, count, scan, last } from "rxjs/operators";
 
 function main() {
   /**
@@ -15,6 +16,8 @@ function main() {
    *
    * Document your code!
    */
+
+  type shape = "rect" | "circle"
 
   /**
    * This is the view for your game to add and update your game elements.
@@ -54,12 +57,43 @@ function main() {
     "fill: green; stroke: green; stroke-width: 1px;"
   );
 
+  function createObstacle(x: string, y: string, type: shape) {
+    if(type === "rect") {
+      const obstacle = document.createElementNS(svg.namespaceURI, "rect");
+      obstacle.setAttribute("width", "200");
+      obstacle.setAttribute("height", "80");
+      obstacle.setAttribute("x", x);
+      obstacle.setAttribute("y", y);
+      obstacle.setAttribute("style", "fill-opacity = 0");
+      svg.appendChild(obstacle)
+    }
+    else {
+      const obstacle = document.createElementNS(svg.namespaceURI, "circle");
+      obstacle.setAttribute("r", "50");
+      obstacle.setAttribute("cx", "100")
+      obstacle.setAttribute("x", x);
+      obstacle.setAttribute("y", y);
+      obstacle.setAttribute("style", "fill-opacity = 0");
+      svg.appendChild(obstacle)
+    }
+  }
+
   // appends each background element to the svgCanvas
   svg.appendChild(river);
   svg.appendChild(ground);
   svg.appendChild(ground2);
   svg.appendChild(frog);
+
+  const kb = fromEvent<KeyboardEvent>(document, "keydown").pipe(map(({key})=> ({x: 0, y: 0, k: key})));
+
+  const w = kb.pipe(filter(({k}) => k === "w" ), map(({y, x}) => ({y: y -= 100, x: 0})));
+  const s = kb.pipe(filter(({k}) => k === "s" ), map(({y, x}) => ({y: y += 100, x: 0})));
+  const a = kb.pipe(filter(({k}) => k === "a" ), map(({x, y}) => ({x: x -= 10, y: 0})));
+  const d = kb.pipe(filter(({k}) => k === "d" ), map(({x, y}) => ({x: x += 10, y: 0})));
+  const final = merge(w,s,a,d).subscribe(({x, y}) => x === 0 ? frog.setAttribute("cy", String(y + Number(frog.getAttribute("cy")))):frog.setAttribute("cx", String(x + Number(frog.getAttribute("cx")))));
 }
+
+
 
 // The following simply runs your main function on window load.  Make sure to leave it in place.
 if (typeof window !== "undefined") {
