@@ -21,7 +21,7 @@ function main() {
    */
   const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
-
+  // Sets the attributes for the background which includes a river and 2 ground sections
   const river = document.createElementNS(svg.namespaceURI, "rect");
   river.setAttribute("width", "600");
   river.setAttribute("height", "100");
@@ -54,6 +54,7 @@ function main() {
     "fill: green; stroke: green; stroke-width: 1px;"
   );
 
+  // appends each background element to the svgCanvas
   svg.appendChild(river);
   svg.appendChild(ground);
   svg.appendChild(ground2);
