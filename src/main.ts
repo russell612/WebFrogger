@@ -1,6 +1,6 @@
 import "./style.css";
-import { interval, fromEvent, zip, from, merge } from "rxjs";
-import { map, filter, take, count, scan, last } from "rxjs/operators";
+import { interval, fromEvent, zip, from} from "rxjs";
+import { map, filter, take, count, scan, last, merge } from "rxjs/operators";
 
 function main() {
   /**
@@ -17,7 +17,91 @@ function main() {
    * Document your code!
    */
 
-  type shape = "rect" | "circle"
+  // initialises the types used for the game as well as state with its required values
+  type shape = "rect" | "circle";
+  type key = "w" | "s" | "a" | "d";
+  type state = Readonly<{pos: Vec; tick: number ;gameOver: Boolean}>;
+
+
+  // adds the Move class and Tick class to ease in updating the state 
+  class Move { constructor(public readonly x:number, public readonly y:number) {}};
+  class Tick { constructor(public readonly time: number) {}};
+
+  // Vector class that was referenced from the Asteroid game template. Helps in maintaining positioning of object that move 
+  // around the map
+  class Vec {
+    constructor(public readonly x: number = 0, public readonly y: number = 0) {}
+    add = (b:Vec) => new Vec(this.x + b.x, this.y + b.y)
+    sub = (b:Vec) => this.add(b.scale(-1))
+    len = ()=> Math.sqrt(this.x*this.x + this.y*this.y)
+    scale = (s:number) => new Vec(this.x*s,this.y*s)
+    ortho = ()=> new Vec(this.y,-this.x)
+    rotate = (deg:number) =>
+              (rad =>(
+                  (cos,sin,{x,y})=>new Vec(x*cos - y*sin, x*sin + y*cos)
+                )(Math.cos(rad), Math.sin(rad), this)
+              )(Math.PI * deg / 180)
+  
+    static unitVecInDirection = (deg: number) => new Vec(0,-1).rotate(deg)
+    static Zero = new Vec();
+  }
+
+  const initState: state = {pos: new Vec(100, 550), tick: 0, gameOver: false};
+
+  // Function to return the frog back to the opposite side of the canvas if it has passed through
+  // the canvas boundaries
+  const 
+  CanvasSize = 600,
+  torusWrap = ({x,y}:Vec) => { 
+    const wrap = (v:number) => 
+      v < 0 ? v + CanvasSize : v > CanvasSize ? v - CanvasSize : v;
+    return new Vec(wrap(x),wrap(y))
+  };
+
+  /* Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved at the latest tick. 
+  More features to be added soon that includes updating state to check collision etc.
+  */
+  function reduceState(s: state, e: Move|Tick): state {
+     return e instanceof Move ? {...s,
+      pos: torusWrap(s.pos.add(new Vec(e.x, e.y))),
+     } :
+     {
+      ...s,
+      tick: s.tick + 10
+     }
+  }
+
+  //const kb$ = fromEvent<KeyboardEvent>(document, "keydown").pipe(filter(({key}) => key === "s" || key === "w" || key === "a" || key === "d")); (deprecated)
+
+  /*
+  observeKey function 
+  base template for processing input from keyboard/mouse and returns an observable of that particular
+  input after its processing functions
+  parameters: 
+  eventName: a string that contains the eventName to be observed
+  key: the key that contains the key to be observed
+  result: a function that processes the key/eventName that is retrieved
+  */
+  const observeKey = <T>(eventName:string, k:key , result:() => T) =>
+    fromEvent<KeyboardEvent>(document, eventName).pipe(filter(({key}) => key === k),
+    map(result));
+
+  // observables to monitor frog movement
+  const moveLeft = observeKey('keydown', 'a', () => new Move(-10, 0));
+  const moveRight = observeKey('keydown', 'd', () => new Move(10, 0));
+  const moveUp = observeKey('keydown', 'w', () => new Move(0, -100));
+  const moveDown = observeKey('keydown', 's', () => new Move(0, 100));
+
+  // updates the frogs position/ game state
+  function updateState(state:state): void {
+    const frog = document.getElementById("frog")!;
+    frog.setAttribute("cx", `${state.pos.x}`);
+    frog.setAttribute("cy", `${state.pos.y}`);
+    state.gameOver ? alert("Game Over") : null;  
+  }
+
+  // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
+  interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, initState)).subscribe(updateState);
 
   /**
    * This is the view for your game to add and update your game elements.
@@ -52,6 +136,7 @@ function main() {
   frog.setAttribute("r", "30");
   frog.setAttribute("cx", "100");
   frog.setAttribute("cy", "550");
+  frog.setAttribute("id", "frog");
   frog.setAttribute(
     "style",
     "fill: green; stroke: green; stroke-width: 1px;"
@@ -77,20 +162,13 @@ function main() {
       svg.appendChild(obstacle)
     }
   }
-
+  
   // appends each background element to the svgCanvas
   svg.appendChild(river);
   svg.appendChild(ground);
   svg.appendChild(ground2);
   svg.appendChild(frog);
 
-  const kb = fromEvent<KeyboardEvent>(document, "keydown").pipe(map(({key})=> ({x: 0, y: 0, k: key})));
-
-  const w = kb.pipe(filter(({k}) => k === "w" ), map(({y, x}) => ({y: y -= 100, x: 0})));
-  const s = kb.pipe(filter(({k}) => k === "s" ), map(({y, x}) => ({y: y += 100, x: 0})));
-  const a = kb.pipe(filter(({k}) => k === "a" ), map(({x, y}) => ({x: x -= 10, y: 0})));
-  const d = kb.pipe(filter(({k}) => k === "d" ), map(({x, y}) => ({x: x += 10, y: 0})));
-  const final = merge(w,s,a,d).subscribe(({x, y}) => x === 0 ? frog.setAttribute("cy", String(y + Number(frog.getAttribute("cy")))):frog.setAttribute("cx", String(x + Number(frog.getAttribute("cx")))));
 }
 
 
