@@ -25,19 +25,21 @@ function main() {
     id: string;
     pos: Vec;
     vel: Vec;
+    type: string;
     width: number;
     height: number
   }>;
 
   // state type that includes states needed to transfer between ticks
-  type state = Readonly<{pos: Vec; time: number ;gameOver: Boolean, objCount: number, obstacles: ReadonlyArray<Obstacle>}>;
+  type state = Readonly<{pos: Vec; time: number ;gameOver: Boolean, objCount: number, obstacles: ReadonlyArray<Obstacle>, background: ReadonlyArray<Obstacle>}>;
 
   // Constant Storage
   const Constants = {
-    CanvasSize: 600,
+    CanvasSize: 700,
     StartObstaclesCount: 10,
     ObstaclesPerRow: 3,
-    MininumObstacleWidth: 100
+    MininumObstacleWidth: 100,
+    Rows: 6
   } as const
 
   // adds the Move class and Tick class to ease in updating the state 
@@ -99,10 +101,11 @@ function main() {
   }
 
   // Function to create obstacle
-  const createObstacle = (type: "rect") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
+  const createObstacle = (type: "rect" | "river" | "ground") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
     <Obstacle> {
       pos: pos,
       vel: vel,
+      type: type,
       id: type + id,
       width: width,
       height: height
@@ -129,26 +132,36 @@ function main() {
 
   const rng = new RNG(200);
 
+  const randomNumberStream = interval(50).pipe(map(rng.nextFloat));
+
   const nextRandom = () => rng.nextFloat() * 50;
   const nextRandomX = () => rng.nextFloat() * 600;
+
+  const nextType = () => rng.nextFloat() > 0.6 ? "river" : "ground";
+
 
 
   // Adds the obstacles to each row
   const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)))
+    .map((_,i) => createObstacle("rect")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)));
   const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(2, 0)))
+    .map((_,i) => createObstacle("rect")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(2, 0)));
   const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(0.5, 0)))
+    .map((_,i) => createObstacle("rect")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(0.5, 0)));
   const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-1, 0)))
+    .map((_,i) => createObstacle("rect")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-1, 0)));
   const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(0.7, 0)))
+    .map((_,i) => createObstacle("rect")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(0.7, 0)));
+  const obstacleRow5 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => createObstacle("rect")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-0.5, 0)));
+
+  const background = [...Array(Constants.Rows)]
+    .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(100)(new Vec(0, i * 100))(new Vec(0,0)));
 
   // Concatenates all obstacles into one array
-  const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0);
+  const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5);
   // Initialises the initial state with said obstacles
-  const initState: state = {pos: new Vec(100, 550), time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles};
+  const initState: state = {pos: new Vec(100, 550), time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background};
 
 
   /*
@@ -178,6 +191,21 @@ function main() {
     frog.setAttribute("cx", `${state.pos.x}`);
     frog.setAttribute("cy", `${state.pos.y}`);
     state.gameOver ? alert("Game Over") : null;  
+    state.background.forEach(b => {
+      const createObstacleView = () => {
+        const v = document.createElementNS(svg.namespaceURI, "rect")!;
+        v.setAttribute("id", b.id);
+        v.classList.add("background");
+        b.type === "river" ? v.setAttribute("style", "fill: blue") : v.setAttribute("style", "fill: chocolate");
+        svg.appendChild(v)
+        return v;
+      }
+      const v = document.getElementById(b.id) || createObstacleView();
+      v.setAttribute("x", String(b.pos.x));
+      v.setAttribute("y", String(b.pos.y));
+      v.setAttribute("width", String(b.width));
+      v.setAttribute("height", String(b.height));
+    })
     state.obstacles.forEach(b => {
       const createObstacleView = () => {
         const v = document.createElementNS(svg.namespaceURI, "rect")!;
@@ -193,6 +221,13 @@ function main() {
       v.setAttribute("height", String(b.height));
       v.setAttribute("style", "fill: purple");
     })
+    const createUpdateFrog = () => {    
+      const elem = document.createElementNS(svg.namespaceURI, "use");
+      elem.setAttribute("href", "#frog");
+      elem.setAttribute("id", "frogupdate");
+      svg.appendChild(elem);
+    }
+    const update = document.getElementById("frogupdate") || createUpdateFrog();
   }
 
   // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
@@ -203,44 +238,46 @@ function main() {
    */
   const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
+
   // Sets the attributes for the background which includes a river and 2 ground sections
-  const river = document.createElementNS(svg.namespaceURI, "rect");
-  river.setAttribute("width", "600");
-  river.setAttribute("height", "100");
-  river.setAttribute("x", "0");
-  river.setAttribute("y", "200");
-  river.setAttribute("style", "fill: blue;");
+  // const river = document.createElementNS(svg.namespaceURI, "rect");
+  // river.setAttribute("width", "600");
+  // river.setAttribute("height", "100");
+  // river.setAttribute("x", "0");
+  // river.setAttribute("y", "200");
+  // river.setAttribute("style", "fill: blue;");
 
-  const ground = document.createElementNS(svg.namespaceURI, "rect");
-  ground.setAttribute("width", "600");
-  ground.setAttribute("height", "200");
-  ground.setAttribute("x", "0");
-  ground.setAttribute("y", "0");
-  ground.setAttribute("style", "fill: chocolate;");
+  // const ground = document.createElementNS(svg.namespaceURI, "rect");
+  // ground.setAttribute("width", "600");
+  // ground.setAttribute("height", "200");
+  // ground.setAttribute("x", "0");
+  // ground.setAttribute("y", "0");
+  // ground.setAttribute("style", "fill: chocolate;");
 
-  const ground2 = document.createElementNS(svg.namespaceURI, "rect");
-  ground2.setAttribute("width", "600");
-  ground2.setAttribute("height", "200");
-  ground2.setAttribute("x", "0");
-  ground2.setAttribute("y", "300");
-  ground2.setAttribute("style", "fill: chocolate;");
+  // const ground2 = document.createElementNS(svg.namespaceURI, "rect");
+  // ground2.setAttribute("width", "600");
+  // ground2.setAttribute("height", "200");
+  // ground2.setAttribute("x", "0");
+  // ground2.setAttribute("y", "300");
+  // ground2.setAttribute("style", "fill: chocolate;");
 
 
   // Example on adding an element
   const frog = document.createElementNS(svg.namespaceURI, "circle");
   frog.setAttribute("r", "30");
   frog.setAttribute("cx", "100");
-  frog.setAttribute("cy", "550");
+  frog.setAttribute("cy", "650");
   frog.setAttribute("id", "frog");
   frog.setAttribute(
     "style",
     "fill: green; stroke: green; stroke-width: 1px;"
   );
+
   
   // appends each background element to the svgCanvas
-  svg.appendChild(river);
-  svg.appendChild(ground);
-  svg.appendChild(ground2);
+  // svg.appendChild(river);
+  // svg.appendChild(ground);
+  // svg.appendChild(ground2);
   svg.appendChild(frog);
 
 }
