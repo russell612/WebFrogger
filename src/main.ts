@@ -100,7 +100,7 @@ function main() {
     pos: torusWrap(o.pos.sub(o.vel))
   }
 
-  // Function to create obstacle
+  // Function to create obstacles or background
   const createObstacle = (type: "rect" | "river" | "ground") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
     <Obstacle> {
       pos: pos,
@@ -132,11 +132,11 @@ function main() {
 
   const rng = new RNG(200);
 
-  const randomNumberStream = interval(50).pipe(map(rng.nextFloat));
 
   const nextRandom = () => rng.nextFloat() * 50;
   const nextRandomX = () => rng.nextFloat() * 600;
 
+  // pseudo-random distribution of river to ground background types
   const nextType = () => rng.nextFloat() > 0.6 ? "river" : "ground";
 
 
@@ -155,6 +155,7 @@ function main() {
   const obstacleRow5 = [...Array(Constants.ObstaclesPerRow)]
     .map((_,i) => createObstacle("rect")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-0.5, 0)));
 
+  // Adds random backgrounds into the mix for potential additional levels
   const background = [...Array(Constants.Rows)]
     .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(100)(new Vec(0, i * 100))(new Vec(0,0)));
 
@@ -184,7 +185,7 @@ function main() {
   const moveDown = observeKey('keydown', 's', () => new Move(0, 100));
 
   // updates the frogs position and adds in Obstacles if not initialized, else it will update the new positioning
-  // of each obstacles per tick
+  // of each obstacles per tick and makes sure that frog stays on top of everything
   function updateState(state:state): void {
     const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
     const frog = document.getElementById("frog")!;
@@ -239,29 +240,6 @@ function main() {
   const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
 
-  // Sets the attributes for the background which includes a river and 2 ground sections
-  // const river = document.createElementNS(svg.namespaceURI, "rect");
-  // river.setAttribute("width", "600");
-  // river.setAttribute("height", "100");
-  // river.setAttribute("x", "0");
-  // river.setAttribute("y", "200");
-  // river.setAttribute("style", "fill: blue;");
-
-  // const ground = document.createElementNS(svg.namespaceURI, "rect");
-  // ground.setAttribute("width", "600");
-  // ground.setAttribute("height", "200");
-  // ground.setAttribute("x", "0");
-  // ground.setAttribute("y", "0");
-  // ground.setAttribute("style", "fill: chocolate;");
-
-  // const ground2 = document.createElementNS(svg.namespaceURI, "rect");
-  // ground2.setAttribute("width", "600");
-  // ground2.setAttribute("height", "200");
-  // ground2.setAttribute("x", "0");
-  // ground2.setAttribute("y", "300");
-  // ground2.setAttribute("style", "fill: chocolate;");
-
-
   // Example on adding an element
   const frog = document.createElementNS(svg.namespaceURI, "circle");
   frog.setAttribute("r", "30");
@@ -274,10 +252,6 @@ function main() {
   );
 
   
-  // appends each background element to the svgCanvas
-  // svg.appendChild(river);
-  // svg.appendChild(ground);
-  // svg.appendChild(ground2);
   svg.appendChild(frog);
 
 }
