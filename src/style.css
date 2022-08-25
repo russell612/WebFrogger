@@ -21,3 +21,9 @@ svg {
 p.highlight {
     color: red;
 }
+
+.gameover {
+    font-family: sans-serif;
+    font-size:80px ;
+    fill:white;
+}

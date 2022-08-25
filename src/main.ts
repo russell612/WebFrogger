@@ -30,8 +30,15 @@ function main() {
     height: number
   }>;
 
+  type Frog = Readonly<{
+    id: string;
+    pos: Vec;
+    vel: Vec;
+    radius: number;
+  }>
+
   // state type that includes states needed to transfer between ticks
-  type state = Readonly<{pos: Vec; time: number ;gameOver: Boolean, objCount: number, obstacles: ReadonlyArray<Obstacle>, background: ReadonlyArray<Obstacle>}>;
+  type state = Readonly<{time: number ;gameOver: Boolean, objCount: number, obstacles: ReadonlyArray<Obstacle>, background: ReadonlyArray<Obstacle>, frog: Frog}>;
 
   // Constant Storage
   const Constants = {
@@ -46,10 +53,16 @@ function main() {
   class Move { constructor(public readonly x:number, public readonly y:number) {}};
   // tick function to initiate updates to obstacle positioning
   const tick = (s:state, elapsed: number) => {
+    const not = <T>(f:(x:T)=> boolean) => (x:T) => !f(x),
+    mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
+
+    bodiesCollided = ([a,b]:[Frog,Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
+    frogCollided = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0;
     return <state> {
       ...s,
       obstacles: s.obstacles.map(moveObs),
-      time: elapsed
+      time: elapsed,
+      gameOver: frogCollided
     }
   }
   class Tick { constructor(public readonly time: number) {}};
@@ -89,7 +102,10 @@ function main() {
   */
   function reduceState(s: state, e: Move|Tick): state {
      return e instanceof Move ? {...s,
-      pos: torusWrap(s.pos.add(new Vec(e.x, e.y))),
+      frog: {
+        ...s.frog,
+        pos: torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
+      }
      } :
      tick(s, e.time);
   }
@@ -159,10 +175,13 @@ function main() {
   const background = [...Array(Constants.Rows)]
     .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(100)(new Vec(0, i * 100))(new Vec(0,0)));
 
+  const rivers = background.filter(x => x.type === "river");
+  const ground = background.filter(x => x.type === "ground");
+
   // Concatenates all obstacles into one array
   const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5);
   // Initialises the initial state with said obstacles
-  const initState: state = {pos: new Vec(100, 550), time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background};
+  const initState: state = {time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background, frog: createFrog() };
 
 
   /*
@@ -188,15 +207,26 @@ function main() {
   // of each obstacles per tick and makes sure that frog stays on top of everything
   function updateState(state:state): void {
     const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
-    const frog = document.getElementById("frog")!;
-    frog.setAttribute("cx", `${state.pos.x}`);
-    frog.setAttribute("cy", `${state.pos.y}`);
-    state.gameOver ? alert("Game Over") : null;  
+    const createFrogView = (f: Frog) => {
+      const frog = document.createElementNS(svg.namespaceURI, "circle")
+      frog.setAttribute("id", f.id);
+      frog.setAttribute("cx", String(f.pos.x));
+      frog.setAttribute("cy", String(f.pos.y));
+      frog.setAttribute("r", String(f.radius));
+      frog.setAttribute("style", "fill: green");
+      svg.appendChild(frog);
+      return frog;
+    }
+    const frog = document.getElementById("frog") || createFrogView(state.frog);
+    frog.setAttribute("cx", `${state.frog.pos.x}`);
+    frog.setAttribute("cy", `${state.frog.pos.y}`);
     state.background.forEach(b => {
       const createObstacleView = () => {
         const v = document.createElementNS(svg.namespaceURI, "rect")!;
         v.setAttribute("id", b.id);
         v.classList.add("background");
+        v.setAttribute("width", String(b.width));
+        v.setAttribute("height", String(b.height));
         b.type === "river" ? v.setAttribute("style", "fill: blue") : v.setAttribute("style", "fill: chocolate");
         svg.appendChild(v)
         return v;
@@ -204,8 +234,6 @@ function main() {
       const v = document.getElementById(b.id) || createObstacleView();
       v.setAttribute("x", String(b.pos.x));
       v.setAttribute("y", String(b.pos.y));
-      v.setAttribute("width", String(b.width));
-      v.setAttribute("height", String(b.height));
     })
     state.obstacles.forEach(b => {
       const createObstacleView = () => {
@@ -229,10 +257,18 @@ function main() {
       svg.appendChild(elem);
     }
     const update = document.getElementById("frogupdate") || createUpdateFrog();
+
+    if (state.gameOver) {
+      const v = document.createElementNS(svg.namespaceURI, "text")!;
+      v.setAttribute("x", String(Constants.CanvasSize/7 + 25));
+      v.setAttribute("y", String(Constants.CanvasSize/2));
+      v.setAttribute("class", "gameover");
+      v.textContent = "Game Over";
+      svg.appendChild(v);
+      subscription.unsubscribe();
+    }
   }
 
-  // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
-  interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, initState)).subscribe(updateState);
 
   /**
    * This is the view for your game to add and update your game elements.
@@ -240,20 +276,17 @@ function main() {
   const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
 
-  // Example on adding an element
-  const frog = document.createElementNS(svg.namespaceURI, "circle");
-  frog.setAttribute("r", "30");
-  frog.setAttribute("cx", "100");
-  frog.setAttribute("cy", "650");
-  frog.setAttribute("id", "frog");
-  frog.setAttribute(
-    "style",
-    "fill: green; stroke: green; stroke-width: 1px;"
-  );
-
-  
-  svg.appendChild(frog);
-
+  // Creates the Frog
+  function createFrog(): Frog {
+    return {
+      id: 'frog',
+      pos: new Vec(350, 650),
+      vel: Vec.Zero,
+      radius: 30
+    }
+  } 
+    // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
+  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, initState)).subscribe(updateState);
 }
 
 
