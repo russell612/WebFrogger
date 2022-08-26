@@ -21,14 +21,17 @@ function main() {
   type key = "w" | "s" | "a" | "d";
 
   // Obstacle type with its corresponding attributes and types
+  // For circle type obstacles, width and height === radius
   type Obstacle = Readonly<{
     id: string;
     pos: Vec;
     vel: Vec;
     type: string;
     width: number;
-    height: number
+    height: number;
   }>;
+
+
 
   type Frog = Readonly<{
     id: string;
@@ -46,39 +49,17 @@ function main() {
     background: ReadonlyArray<Obstacle>;
     frog: Frog;
     score: number; 
+    frogWins: number
   }>
 
   // Constant Storage
   const Constants = {
-    CanvasSize: 700,
+    CanvasSize: 900,
     StartObstaclesCount: 10,
     ObstaclesPerRow: 3,
     MininumObstacleWidth: 100,
-    Rows: 6
+    Rows: 8
   } as const
-
-  // adds the Move class and Tick class to ease in updating the state 
-  class Move { constructor(public readonly x:number, public readonly y:number) {}};
-  // tick function to initiate updates to obstacle positioning
-  const tick = (s:state, elapsed: number) => {
-    const not = <T>(f:(x:T)=> boolean) => (x:T) => !f(x),
-    mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
-
-    bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
-    bodiesCollidedWater = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < b.width/2,
-    //(a.pos.x - a.radius < b.pos.x + b.width/2) && (a.pos.x + a.radius > b.pos.x - b.width/2),
-    frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
-    frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
-    frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
-    console.log(frogCollidedRiver);
-    return <state> {
-      ...s,
-      obstacles: s.obstacles.map(moveObs),
-      time: elapsed,
-      gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround
-    }
-  }
-  class Tick { constructor(public readonly time: number) {}};
 
   // Vector class that was referenced from the Asteroid game template. Helps in maintaining positioning of object that move 
   // around the map
@@ -91,6 +72,48 @@ function main() {
     static Zero = new Vec();
   }
 
+  // adds the Move class and Tick class to ease in updating the state 
+  class Move { constructor(public readonly x:number, public readonly y:number) {}};
+  // tick function to initiate updates to obstacle positioning
+  const tick = (s:state, elapsed: number) => {
+    const not = <T>(f:(x:T)=> boolean) => (x:T) => !f(x),
+    mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
+
+    bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
+    bodiesCollidedWater = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < b.width/2,
+    winCondition = (a: Frog) => a.pos.y < 100,
+    winConditionhandler = (a: Frog) => {
+      const wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([a, r]));
+      const frog = document.createElementNS(svg.namespaceURI, "circle")
+      frog.setAttribute("id", wonSquare[0].id + "frog");
+      frog.setAttribute("cx", String(wonSquare[0].pos.x + wonSquare[0].width/2));
+      frog.setAttribute("cy", String(wonSquare[0].pos.y + 50));
+      frog.setAttribute("r", String(a.radius));
+      frog.setAttribute("style", "fill: green");
+      svg.appendChild(frog);
+      return new Vec(450, Constants.CanvasSize - 50)
+    }, 
+
+    frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
+    frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
+    frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
+    console.log(frogCollidedRiver);
+    return <state> {
+      ...s,
+      frog: {
+        ...s.frog,
+        pos: winCondition(s.frog) ? winConditionhandler(s.frog): s.frog.pos
+      },
+      obstacles: s.obstacles.map(moveObs),
+      time: elapsed,
+      gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
+      score: winCondition(s.frog) ? s.score + 900 : s.score
+    }
+  }
+  class Tick { constructor(public readonly time: number) {}};
+
+
+
   // Initialises initial game state
 
   // Function to return the frog back to the opposite side of the canvas if it has passed through
@@ -102,6 +125,10 @@ function main() {
     return new Vec(wrap(x),wrap(y))
   };
 
+
+  const gameWin = (s: state) => {
+    
+  }
 
   /* Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved at the latest tick. 
   More features to be added soon that includes updating state to check collision etc.
@@ -124,7 +151,7 @@ function main() {
   }
 
   // Function to create obstacles or background
-  const createObstacle = (type: "rect-ground" | "rect-river" | "river" | "ground") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
+  const createObstacle = (type: "rect-ground" | "rect-river" | "river" | "ground" | "turtle" | "goal") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
     <Obstacle> {
       pos: pos,
       vel: vel,
@@ -134,7 +161,7 @@ function main() {
       height: height
     }
 
-    class RNG {
+  class RNG {
       // LCG using GCC's constants
       m = 0x80000000; // 2**31
       a = 1103515245;
@@ -158,7 +185,7 @@ function main() {
 
   const nextRandom = () => rng.nextFloat() * 50;
 
-  const nextRandomX = () => rng.nextFloat() * 600;
+  const nextRandomX = () => rng.nextFloat() * 900;
 
   // pseudo-random distribution of river to ground background types
   const nextType = () => rng.nextFloat() > 0.6 ? "river" : "ground";
@@ -169,36 +196,37 @@ function main() {
   // Adds random backgrounds into the mix for potential additional levels
   const background = [...Array(Constants.Rows)]
     .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(100)(new Vec(0, i * 100))(new Vec(0,0)));
-  console.log(background);
 
 
-  const riverCollided = ([a,b]:[number,Obstacle]) => b.type === "river" && a > b.pos.y && a < b.pos.y + b.height 
+  const riverCollided = ([a,b]:[number,Obstacle]) => b.type === "river" && a > b.pos.y && a < b.pos.y + b.height  
 
     // Adds the obstacles to each row
   const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => riverCollided([10, background[0]]) ? createObstacle("rect-river")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)): 
-    createObstacle("rect-ground")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)));
+    .map((_,i) => riverCollided([110, background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2, 0)): 
+    createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2, 0)));
   const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
-  .map((_,i) => riverCollided([110, background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(1, 0)): 
-  createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(1, 0)));
+  .map((_,i) => riverCollided([210, background[2]]) ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(1, 0)): 
+  createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(1, 0)));
   const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
-  .map((_,i) => riverCollided([210, background[2]]) ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(-0.5, 0)): 
-  createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(-0.5, 0)));
+  .map((_,i) => riverCollided([310, background[3]]) ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-0.5, 0)): 
+  createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-0.5, 0)));
   const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
-  .map((_,i) => riverCollided([310, background[3]]) ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(1.3, 0)): 
-  createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(1.3, 0)));
+  .map((_,i) => riverCollided([510, background[5]]) ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(1.3, 0)): 
+  createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(1.3, 0)));
   const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
-  .map((_,i) => riverCollided([410, background[4]]) ? createObstacle("rect-river")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(-0.7, 0)): 
-  createObstacle("rect-ground")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(-0.7, 0)));
-  const obstacleRow5 = [...Array(Constants.ObstaclesPerRow)]
-  .map((_,i) => riverCollided([510, background[5]]) ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-1.1, 0)): 
-  createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-1.1, 0)));
+  .map((_,i) => riverCollided([610, background[6]]) ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 610))(new Vec(-0.7, 0)): 
+  createObstacle("rect-ground")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 610))(new Vec(-0.7, 0)));
+  const obstacleRow5 = [...Array(Constants.CanvasSize/100)]
+  .map((_,i) => createObstacle("goal")(i)(Constants.CanvasSize/5)(100)(new Vec(i * Constants.CanvasSize/5, 0))(new Vec(0, 0)));
+  const obstacleRow6 = [...Array(Constants.ObstaclesPerRow)]
+  .map((_,i) => riverCollided([710, background[7]]) ? createObstacle("rect-river")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 710))(new Vec(0.33, 0)): 
+  createObstacle("rect-ground")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 710))(new Vec(0.33, 0)));
 
 
   // Concatenates all obstacles into one array
-  const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5);
+  const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5, obstacleRow6);
   // Initialises the initial state with said obstacles
-  const initState: state = {time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background, frog: createFrog(), score: 0};
+  const initState: state = {time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background, frog: createFrog(), score: 0, frogWins: 0};
 
 
   /*
@@ -244,28 +272,28 @@ function main() {
         v.classList.add("background");
         v.setAttribute("width", String(b.width));
         v.setAttribute("height", String(b.height));
-        b.type === "river" ? v.setAttribute("style", "fill: blue") : v.setAttribute("style", "fill: chocolate");
+        v.setAttribute("x", String(b.pos.x));
+        v.setAttribute("y", String(b.pos.y));
+        b.pos.y === 400 ? v.setAttribute("style" , "fill: none") : b.type === "river" ? v.setAttribute("style", "fill: blue") : v.setAttribute("style", "fill: chocolate")
         svg.appendChild(v)
         return v;
       }
       const v = document.getElementById(b.id) || createObstacleView();
-      v.setAttribute("x", String(b.pos.x));
-      v.setAttribute("y", String(b.pos.y));
     })
     state.obstacles.forEach(b => {
       const createObstacleView = () => {
         const v = document.createElementNS(svg.namespaceURI, "rect")!;
         v.setAttribute("id", b.id);
-        v.classList.add("obstacle")
+        v.setAttribute("width", String(b.width));
+        v.setAttribute("height", String(b.height));
+        b.type === "goal" ? v.setAttribute("style", "stroke: white;") : b.type === "rect-river" ? v.setAttribute("style", "fill: orange") : v.setAttribute("style", "fill: purple");
+        v.classList.add("obstacle");
         svg.appendChild(v)
         return v;
       }
       const v = document.getElementById(b.id) || createObstacleView();
       v.setAttribute("x", String(b.pos.x));
       v.setAttribute("y", String(b.pos.y));
-      v.setAttribute("width", String(b.width));
-      v.setAttribute("height", String(b.height));
-      v.setAttribute("style", "fill: purple");
     })
     const createUpdateFrog = () => {    
       const elem = document.createElementNS(svg.namespaceURI, "use");
@@ -275,17 +303,15 @@ function main() {
     }
     const update = document.getElementById("frogupdate") || createUpdateFrog();
 
-    const scoreSvg = document.querySelector("#score") as SVGElement & HTMLElement;
-
     const createScore = () => {
       const v = document.createElementNS(svg.namespaceURI, "text")!;
       v.setAttribute("id", "scoreValue")
       v.setAttribute("class", "score");
       v.setAttribute("x", "100");
-      v.setAttribute("y", "60");
+      v.setAttribute("y", "860");
       v.setAttribute("style", "fill: white;");
       v.textContent = String(0);
-      scoreSvg.appendChild(v);
+      svg.appendChild(v);
       return v
     }
 
@@ -294,7 +320,7 @@ function main() {
 
     if (state.gameOver) {
       const v = document.createElementNS(svg.namespaceURI, "text")!;
-      v.setAttribute("x", String(Constants.CanvasSize/7 + 25));
+      v.setAttribute("x", String(Constants.CanvasSize/5 + 50));
       v.setAttribute("y", String(Constants.CanvasSize/2));
       v.setAttribute("class", "gameover");
       v.textContent = "Game Over";
@@ -314,7 +340,7 @@ function main() {
   function createFrog(): Frog {
     return {
       id: 'frog',
-      pos: new Vec(350, 650),
+      pos: new Vec(450, 850),
       vel: Vec.Zero,
       radius: 30
     }
