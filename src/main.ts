@@ -56,13 +56,17 @@ function main() {
     const not = <T>(f:(x:T)=> boolean) => (x:T) => !f(x),
     mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
 
-    bodiesCollided = ([a,b]:[Frog,Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
-    frogCollided = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0;
+    bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
+  //(a.pos.x - a.radius < b.pos.x + b.width/2) && (a.pos.x + a.radius > b.pos.x - b.width/2),
+    frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length == 0,
+    frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
+    frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
+    console.log(frogCollidedRiver);
     return <state> {
       ...s,
       obstacles: s.obstacles.map(moveObs),
       time: elapsed,
-      gameOver: frogCollided
+      gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround
     }
   }
   class Tick { constructor(public readonly time: number) {}};
@@ -117,7 +121,7 @@ function main() {
   }
 
   // Function to create obstacles or background
-  const createObstacle = (type: "rect" | "river" | "ground") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
+  const createObstacle = (type: "rect-ground" | "rect-river" | "river" | "ground") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
     <Obstacle> {
       pos: pos,
       vel: vel,
@@ -150,6 +154,7 @@ function main() {
 
 
   const nextRandom = () => rng.nextFloat() * 50;
+
   const nextRandomX = () => rng.nextFloat() * 600;
 
   // pseudo-random distribution of river to ground background types
@@ -157,26 +162,35 @@ function main() {
 
 
 
-  // Adds the obstacles to each row
-  const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)));
-  const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(2, 0)));
-  const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(0.5, 0)));
-  const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-1, 0)));
-  const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(0.7, 0)));
-  const obstacleRow5 = [...Array(Constants.ObstaclesPerRow)]
-    .map((_,i) => createObstacle("rect")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-0.5, 0)));
 
   // Adds random backgrounds into the mix for potential additional levels
   const background = [...Array(Constants.Rows)]
     .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(100)(new Vec(0, i * 100))(new Vec(0,0)));
+  console.log(background);
 
-  const rivers = background.filter(x => x.type === "river");
-  const ground = background.filter(x => x.type === "ground");
+
+  const riverCollided = ([a,b]:[number,Obstacle]) => b.type === "river" && a > b.pos.y && a < b.pos.y + b.height 
+
+    // Adds the obstacles to each row
+  const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
+    .map((_,i) => riverCollided([10, background[0]]) ? createObstacle("rect-river")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)): 
+    createObstacle("rect-ground")(i + 0)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 10))(new Vec(-1.2, 0)));
+  const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
+  .map((_,i) => riverCollided([110, background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(1, 0)): 
+  createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(1, 0)));
+  const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
+  .map((_,i) => riverCollided([210, background[2]]) ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(-0.5, 0)): 
+  createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(-0.5, 0)));
+  const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
+  .map((_,i) => riverCollided([310, background[3]]) ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(1.3, 0)): 
+  createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(1.3, 0)));
+  const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
+  .map((_,i) => riverCollided([410, background[4]]) ? createObstacle("rect-river")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(-0.7, 0)): 
+  createObstacle("rect-ground")(i + 40)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 410))(new Vec(-0.7, 0)));
+  const obstacleRow5 = [...Array(Constants.ObstaclesPerRow)]
+  .map((_,i) => riverCollided([510, background[5]]) ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-1.1, 0)): 
+  createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(-1.1, 0)));
+
 
   // Concatenates all obstacles into one array
   const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5);
