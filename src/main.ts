@@ -65,8 +65,9 @@ function main() {
     mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
 
     bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
+    bodiesCollidedWater = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < b.width/2,
     //(a.pos.x - a.radius < b.pos.x + b.width/2) && (a.pos.x + a.radius > b.pos.x - b.width/2),
-    frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length == 0,
+    frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
     frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
     frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
     console.log(frogCollidedRiver);
@@ -100,6 +101,7 @@ function main() {
       v < 0 ? v + Constants.CanvasSize : v > Constants.CanvasSize ? v - Constants.CanvasSize : v;
     return new Vec(wrap(x),wrap(y))
   };
+
 
   /* Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved at the latest tick. 
   More features to be added soon that includes updating state to check collision etc.
@@ -213,8 +215,8 @@ function main() {
     map(result));
 
   // observables to monitor frog movement
-  const moveLeft = observeKey('keydown', 'a', () => new Move(-10, 0));
-  const moveRight = observeKey('keydown', 'd', () => new Move(10, 0));
+  const moveLeft = observeKey('keydown', 'a', () => new Move(-20, 0));
+  const moveRight = observeKey('keydown', 'd', () => new Move(20, 0));
   const moveUp = observeKey('keydown', 'w', () => new Move(0, -100));
   const moveDown = observeKey('keydown', 's', () => new Move(0, 100));
 
