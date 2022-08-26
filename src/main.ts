@@ -84,14 +84,18 @@ function main() {
     winCondition = (a: Frog) => a.pos.y < 100,
     winConditionhandler = (a: Frog) => {
       const wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([a, r]));
-      const frog = document.createElementNS(svg.namespaceURI, "circle")
-      frog.setAttribute("id", wonSquare[0].id + "frog");
-      frog.setAttribute("cx", String(wonSquare[0].pos.x + wonSquare[0].width/2));
-      frog.setAttribute("cy", String(wonSquare[0].pos.y + 50));
-      frog.setAttribute("r", String(a.radius));
-      frog.setAttribute("style", "fill: green");
-      svg.appendChild(frog);
-      return new Vec(450, Constants.CanvasSize - 50)
+      const createWinFrog = () => {
+        const frog = document.createElementNS(svg.namespaceURI, "circle")
+        frog.setAttribute("id", wonSquare[0].id + "frog");
+        frog.setAttribute("cx", String(wonSquare[0].pos.x + wonSquare[0].width/2));
+        frog.setAttribute("cy", String(wonSquare[0].pos.y + 50));
+        frog.setAttribute("r", String(a.radius));
+        frog.setAttribute("style", "fill: green");
+        svg.appendChild(frog);
+        return 900
+      }
+      const frog = document.getElementById(wonSquare[0].id + "frog") ?  -100 : createWinFrog();
+      return frog
     }, 
 
     frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
@@ -102,12 +106,12 @@ function main() {
       ...s,
       frog: {
         ...s.frog,
-        pos: winCondition(s.frog) ? winConditionhandler(s.frog): s.frog.pos
+        pos: winCondition(s.frog) ? new Vec(450, Constants.CanvasSize - 50) : s.frog.pos
       },
       obstacles: s.obstacles.map(moveObs),
       time: elapsed,
       gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
-      score: winCondition(s.frog) ? s.score + 900 : s.score
+      score: winCondition(s.frog) ? s.score + winConditionhandler(s.frog) : s.score
     }
   }
   class Tick { constructor(public readonly time: number) {}};
