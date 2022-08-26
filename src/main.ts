@@ -38,7 +38,15 @@ function main() {
   }>
 
   // state type that includes states needed to transfer between ticks
-  type state = Readonly<{time: number ;gameOver: Boolean, objCount: number, obstacles: ReadonlyArray<Obstacle>, background: ReadonlyArray<Obstacle>, frog: Frog}>;
+  type state = Readonly<{
+    time: number ;
+    gameOver: Boolean;
+    objCount: number;
+    obstacles: ReadonlyArray<Obstacle>;
+    background: ReadonlyArray<Obstacle>;
+    frog: Frog;
+    score: number; 
+  }>
 
   // Constant Storage
   const Constants = {
@@ -57,7 +65,7 @@ function main() {
     mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
 
     bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
-  //(a.pos.x - a.radius < b.pos.x + b.width/2) && (a.pos.x + a.radius > b.pos.x - b.width/2),
+    //(a.pos.x - a.radius < b.pos.x + b.width/2) && (a.pos.x + a.radius > b.pos.x - b.width/2),
     frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length == 0,
     frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
     frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
@@ -75,18 +83,10 @@ function main() {
   // around the map
   class Vec {
     constructor(public readonly x: number = 0, public readonly y: number = 0) {}
-    add = (b:Vec) => new Vec(this.x + b.x, this.y + b.y)
-    sub = (b:Vec) => this.add(b.scale(-1))
-    len = ()=> Math.sqrt(this.x*this.x + this.y*this.y)
-    scale = (s:number) => new Vec(this.x*s,this.y*s)
-    ortho = ()=> new Vec(this.y,-this.x)
-    rotate = (deg:number) =>
-              (rad =>(
-                  (cos,sin,{x,y})=>new Vec(x*cos - y*sin, x*sin + y*cos)
-                )(Math.cos(rad), Math.sin(rad), this)
-              )(Math.PI * deg / 180)
-  
-    static unitVecInDirection = (deg: number) => new Vec(0,-1).rotate(deg)
+    add = (b:Vec) => new Vec(this.x + b.x, this.y + b.y);
+    sub = (b:Vec) => this.add(b.scale(-1));
+    len = ()=> Math.sqrt(this.x*this.x + this.y*this.y);
+    scale = (s:number) => new Vec(this.x*s,this.y*s);
     static Zero = new Vec();
   }
 
@@ -106,6 +106,7 @@ function main() {
   */
   function reduceState(s: state, e: Move|Tick): state {
      return e instanceof Move ? {...s,
+      score: s.score - e.y,
       frog: {
         ...s.frog,
         pos: torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
@@ -195,7 +196,7 @@ function main() {
   // Concatenates all obstacles into one array
   const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5);
   // Initialises the initial state with said obstacles
-  const initState: state = {time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background, frog: createFrog() };
+  const initState: state = {time: 0, gameOver: false, objCount: 0, obstacles: startingObstacles, background: background, frog: createFrog(), score: 0};
 
 
   /*
@@ -271,6 +272,23 @@ function main() {
       svg.appendChild(elem);
     }
     const update = document.getElementById("frogupdate") || createUpdateFrog();
+
+    const scoreSvg = document.querySelector("#score") as SVGElement & HTMLElement;
+
+    const createScore = () => {
+      const v = document.createElementNS(svg.namespaceURI, "text")!;
+      v.setAttribute("id", "scoreValue")
+      v.setAttribute("class", "score");
+      v.setAttribute("x", "100");
+      v.setAttribute("y", "60");
+      v.setAttribute("style", "fill: white;");
+      v.textContent = String(0);
+      scoreSvg.appendChild(v);
+      return v
+    }
+
+    const score = document.getElementById("scoreValue") || createScore();
+    score.textContent = String(state.score);
 
     if (state.gameOver) {
       const v = document.createElementNS(svg.namespaceURI, "text")!;
