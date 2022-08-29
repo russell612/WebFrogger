@@ -50,6 +50,7 @@ function main() {
     frog: Frog;
     score: number; 
     frogWins: number;
+    frogWinPos: ReadonlyArray<Frog>
     level: number; 
     rngSeed: number;
   }>
@@ -78,15 +79,14 @@ function main() {
   class Move { constructor(public readonly x:number, public readonly y:number) {}};
   // tick function to initiate updates to obstacle positioning
   const tick = (s:state, elapsed: number) => {
-    const not = <T>(f:(x:T)=> boolean) => (x:T) => !f(x),
-    mergeMap = <T, U>(a: ReadonlyArray<T>, f:(a: T) => ReadonlyArray<U>) => Array.prototype.concat(...a.map(f)), 
 
+    const 
     bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
     bodiesCollidedWater = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < b.width/2,
     winCondition = (a: Frog) => a.pos.y < 100,
+    wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([s.frog, r])),
     winConditionhandler = (a: Frog) => {
-      const wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([a, r]));
-      const createWinFrog = () => {
+      const createWinFrogSVG = () => {
         const frog = document.createElementNS(svg.namespaceURI, "circle")
         frog.setAttribute("id", wonSquare[0].id + "frog");
         frog.setAttribute("cx", String(wonSquare[0].pos.x + wonSquare[0].width/2));
@@ -96,14 +96,40 @@ function main() {
         svg.appendChild(frog);
         return 900
       }
-      const frog = document.getElementById(wonSquare[0].id + "frog") ?  -100 : createWinFrog();
-      return frog
-    }, 
+      const frogScore = document.getElementById(wonSquare[0].id + "frog") ?  -100 : createWinFrogSVG();
+      return frogScore
+    }
+
+    const createWinFrog = () => {
+      return <Frog>{
+        id: wonSquare[0].id + "frog",
+        pos: new Vec(wonSquare[0].pos.x + wonSquare[0].width/2, wonSquare[0].pos.y + 50),
+        vel: Vec.Zero,
+        radius: 30
+      }
+    },
 
     frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
     frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
     frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
     console.log(frogCollidedRiver);
+    if (s.frogWins == 5) {
+      s.obstacles.forEach(b => {
+        const v = document.getElementById(b.id);
+        v?.remove();
+      })
+      s.background.forEach(b => {
+        const v = document.getElementById(b.id);
+        v?.remove();
+      })
+      s.frogWinPos.forEach(b => {
+        const v = document.getElementById(b.id);
+        v?.remove();
+      })
+      const frogUpdate = document.getElementById("frogUpdate")
+      frogUpdate?.remove();
+      return stateInit(s)
+    }
     return <state> {
       ...s,
       frog: {
@@ -113,7 +139,9 @@ function main() {
       obstacles: s.obstacles.map(moveObs),
       time: elapsed,
       gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
-      score: winCondition(s.frog) ? s.score + winConditionhandler(s.frog) : s.score
+      frogWins: winCondition(s.frog) ? document.getElementById(wonSquare[0].id + "frog") ? s.frogWins : s.frogWins + 1: s.frogWins,
+      frogWinPos: winCondition(s.frog) ? document.getElementById(wonSquare[0].id + "frog") ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos) : s.frogWinPos,
+      score: winCondition(s.frog) ? s.score + winConditionhandler(s.frog) : s.score  
     }
   }
   class Tick { constructor(public readonly time: number) {}};
@@ -128,20 +156,19 @@ function main() {
   torusWrap = ({x,y}:Vec) => { 
     const wrap = (v:number) => 
       v < 0 ? v + Constants.CanvasSize : v > Constants.CanvasSize ? v - Constants.CanvasSize : v;
-    return new Vec(wrap(x),wrap(y))
+    const wrapY = (v: number) =>
+      v > Constants.CanvasSize ? 850 : v
+    return new Vec(wrap(x),wrapY(y))
   };
 
 
-  const gameWin = (s: state) => {
-    
-  }
 
   /* Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved at the latest tick. 
   More features to be added soon that includes updating state to check collision etc.
   */
   function reduceState(s: state, e: Move|Tick): state {
      return e instanceof Move ? {...s,
-      score: s.score - e.y,
+      score: s.score - (torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y === 850 ? torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y - 850 : e.y),
       frog: {
         ...s.frog,
         pos: torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
@@ -254,10 +281,15 @@ function main() {
   
 
   // Initialises the initial state with said obstacles
-  const initState: state = {time: 0, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200};
+  function stateInit(s?: state): state {
 
-  const stateWithBg: state = createBackgrounds(initState);
-  const finalStartState: state = createObstacles(stateWithBg);
+    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 0, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: []} : {time: 0, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: []};
+    const stateWithBg = createBackgrounds(initState)
+    const finalStartState: state = createObstacles(stateWithBg);
+
+    return finalStartState
+  }
+
 
   /*
   observeKey function 
@@ -328,10 +360,9 @@ function main() {
     const createUpdateFrog = () => {    
       const elem = document.createElementNS(svg.namespaceURI, "use");
       elem.setAttribute("href", "#frog");
-      elem.setAttribute("id", "frogupdate");
+      elem.setAttribute("id", "frogUpdate");
       svg.appendChild(elem);
     }
-    const update = document.getElementById("frogupdate") || createUpdateFrog();
 
     const createScore = () => {
       const v = document.createElementNS(svg.namespaceURI, "text")!;
@@ -357,12 +388,7 @@ function main() {
       svg.appendChild(v);
       subscription.unsubscribe();
     }
-
-    if (state.frogWins === 5) {
-      // TO BE IMPLEMENTED TO CHANGE A NEW GAME STATE FOR NEXT LEVEL
-      // ADD IN NEW LEVEL, PASS IN NEW INITSTATE VALUES, CREATE NEW GAME
-      null;
-    }
+    const update = document.getElementById("frogUpdate") || createUpdateFrog();
   }
 
 
@@ -382,7 +408,7 @@ function main() {
     }
   } 
     // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
-  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, finalStartState)).subscribe(updateState);
+  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, stateInit())).subscribe(updateState);
 }
 
 
