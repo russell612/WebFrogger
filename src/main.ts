@@ -376,7 +376,7 @@ function main() {
     }
   } 
     // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
-  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, initState)).subscribe(updateState);
+  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, finalStartState)).subscribe(updateState);
 }
 
 
