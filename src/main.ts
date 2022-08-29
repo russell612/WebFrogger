@@ -357,6 +357,12 @@ function main() {
       svg.appendChild(v);
       subscription.unsubscribe();
     }
+
+    if (state.frogWins === 5) {
+      // TO BE IMPLEMENTED TO CHANGE A NEW GAME STATE FOR NEXT LEVEL
+      // ADD IN NEW LEVEL, PASS IN NEW INITSTATE VALUES, CREATE NEW GAME
+      null;
+    }
   }
 
 
