@@ -24,6 +24,14 @@ p.highlight {
 
 .gameover {
     font-family: sans-serif;
-    font-size:80px ;
+    font-size:70px ;
     fill:white;
+    text-anchor: middle;
+}
+
+.restart {
+    font-family: sans-serif;
+    font-size:60px ;
+    fill:white;
+    text-anchor: middle;
 }
