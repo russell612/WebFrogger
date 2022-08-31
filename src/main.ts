@@ -78,6 +78,8 @@ function main() {
     static Zero = new Vec();
   }
 
+  class Reset {}
+
   // adds the Move class and Tick class to ease in updating the state 
   class Move { constructor(public readonly x:number, public readonly y:number) {}};
   // tick function to initiate updates to obstacle positioning
@@ -147,16 +149,7 @@ function main() {
         v2.setAttribute("class", "restart");
         v2.setAttribute("id", "gameover2")
         v2.textContent = "Press Enter to Restart Game";
-        svg.appendChild(v2);
-        const enterCheck = observeKey("keydown", "Enter", () =>  
-        restart).subscribe(x => restart);
-        function restart(x?: number): state {
-          return x! ? <state>{
-            ...s, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: s.highScore
-          } : s
-        }
-        return restart()
-        
+        svg.appendChild(v2);        
       }
       else {
         return <state> {
@@ -207,7 +200,7 @@ function main() {
   /* Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved at the latest tick. 
   More features to be added soon that includes updating state to check collision etc.
   */
-  function reduceState(s: state, e: Move|Tick): state {
+  function reduceState(s: state, e: Move|Tick|Reset): state {
      return e instanceof Move ? {...s,
       score: s.score - (torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y === 850 ? torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y - 850 : e.y),
       scoreOnLevel: s.scoreOnLevel - (torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y === 850 ? torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y - 850 : e.y),
@@ -215,7 +208,10 @@ function main() {
         ...s.frog,
         pos: s.gameOver ? s.frog.pos : torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
       }
-     } :
+     } : e instanceof Reset ? stateInit({
+        ...s, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 80, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: s.highScore
+      }
+    ) :
      tick(s, e.time);
   }
 
@@ -284,7 +280,6 @@ function main() {
     const nextRandomX = () => rng.nextFloat() * 900;
 
     // pseudo-random distribution of river to ground background types
-    const nextType = () => rng.nextFloat() > 0.6 ? "river" : "ground";
       const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
         .map((_,i) => riverCollided([110, s.background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2, 0)): 
         createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2 * s.level, 0)));
@@ -321,7 +316,7 @@ function main() {
   function stateInit(s?: state): state {
 
     const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 0, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore} : {time: 0, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0};
-    const stateWithBg = createBackgrounds(initState)
+    const stateWithBg: state = createBackgrounds(initState)
     const finalStartState: state = createObstacles(stateWithBg);
 
     return finalStartState
@@ -345,7 +340,8 @@ function main() {
   const moveLeft = observeKey('keydown', 'a', () => new Move(-20, 0));
   const moveRight = observeKey('keydown', 'd', () => new Move(20, 0));
   const moveUp = observeKey('keydown', 'w', () => new Move(0, -100));
-  const moveDown = observeKey('keydown', 's', () => new Move(0, 100));
+  const moveDown = observeKey('keydown', 's', () => new Move(0, 100));        
+  const enterCheck = observeKey("keydown", "Enter", () => new Reset);
 
 
   // updates the frogs position and adds in Obstacles if not initialized, else it will update the new positioning
@@ -471,7 +467,7 @@ function main() {
   } 
 
     // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
-  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp) ,scan(reduceState, stateInit()), filter(s=> s.gameOver === false)).subscribe(updateState);
+  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp, enterCheck) ,scan(reduceState, stateInit()), filter(s=> s.gameOver === false)).subscribe(updateState);
 }
 
 
