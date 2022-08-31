@@ -208,13 +208,31 @@ function main() {
         ...s.frog,
         pos: s.gameOver ? s.frog.pos : torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
       }
-     } : e instanceof Reset ? stateInit({
-        ...s, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 80, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: s.highScore
-      }
-    ) :
+     } : e instanceof Reset ? 
+    reset(s)
+    :
      tick(s, e.time);
   }
 
+  function reset(s:state) {
+    s.obstacles.forEach(b => {
+      const v = document.getElementById(b.id);
+      v?.remove();
+    })
+    s.background.forEach(b => {
+      const v = document.getElementById(b.id);
+      v?.remove();
+    })
+    s.frogWinPos.forEach(b => {
+      const v = document.getElementById(b.id);
+      v?.remove();
+    })
+    const frogUpdate = document.getElementById("frogUpdate")
+    frogUpdate?.remove();
+    return stateInit({
+      ...s, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 80, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: s.highScore
+    })
+  }
   // Function moveObs to move Obstacles
   const moveObs = (o: Obstacle) => <Obstacle>{
     ...o,
