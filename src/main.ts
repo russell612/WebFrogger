@@ -202,8 +202,8 @@ function main() {
   */
   function reduceState(s: state, e: Move|Tick|Reset): state {
      return e instanceof Move ? {...s,
-      score: s.score - (torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y === 850 ? torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y - 850 : e.y),
-      scoreOnLevel: s.scoreOnLevel - (torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y === 850 ? torusWrap(s.frog.pos.add(new Vec(e.x, e.y))).y - 850 : e.y),
+      score: s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.score : s.score - e.y,
+      scoreOnLevel: s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.scoreOnLevel : s.scoreOnLevel - e.y,
       frog: {
         ...s.frog,
         pos: s.gameOver ? s.frog.pos : torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
@@ -464,7 +464,6 @@ function main() {
     const score = document.getElementById("scoreValue") || createScore();
     score.textContent = String(state.score);
     const update = document.getElementById("frogUpdate") || createUpdateFrog();
-    console.log
   }
 
 
