@@ -40,7 +40,7 @@ function main() {
     radius: number;
   }>
 
-  // state type that includes states needed to transfer between ticks
+  // state type that includes statuses and objects needed to transfer between ticks
   type state = Readonly<{
     time: number ;
     gameOver: Boolean;
@@ -57,7 +57,6 @@ function main() {
     scoreOnLevel: number;
     highScore: number;
     reset: boolean;
-    // reset: boolean;
   }>
 
   // Constant Storage
@@ -66,7 +65,9 @@ function main() {
     StartObstaclesCount: 10,
     ObstaclesPerRow: 3,
     MininumObstacleWidth: 100,
-    Rows: 8
+    Rows: 8,
+    ObstacleHeight: 80,
+    BackgroundHeight: 100
   } as const
 
   // Vector class that was referenced from the Asteroid game template. Helps in maintaining positioning of object that move 
@@ -80,30 +81,37 @@ function main() {
     static Zero = new Vec();
   }
 
+  //Reset indicator Class
   class Reset {}
 
   // adds the Move class and Tick class to ease in updating the state 
   class Move { constructor(public readonly x:number, public readonly y:number) {}};
-  // tick function to initiate updates to obstacle positioning
+  // tick function to initiate updates on the game State
   const tick = (s:state, elapsed: number) => {
 
     const 
+    //Checks if an Obstacle has collided with the frog
     bodiesCollided = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < a.radius + b.width/2,
+    //Different Collision Detection for river background
     bodiesCollidedWater = ([a,b]:[Frog, Obstacle]) => a.pos.sub(new Vec(b.pos.x + b.width/2, b.pos.y + b.height/2)).len() < b.width/2,
+    //The win condition of the game
     winCondition = (a: Frog) => a.pos.y < 100,
+    //wonSquare is using bodiesCollided to check which winning square has the frog entered
     wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([s.frog, r])),
+    //winCondition handler helps in checking if the winning square already has been before, if true then it will reset with no added score, else it will return 900 as a bonus for getting 
+    //the frog to the winning square.
     winConditionhandler = (a: Frog) => {
       const frogScore = document.getElementById(wonSquare[0].id + "frog") ?  -100 : 900;
       return frogScore
     }
-
+    // Checks if the level is finished, it will return a state with the reset boolean true to indicate removing all svg elements to start a new level.
     if (s.frogWins === 5 && s.reset === false) {
       return <state>{
         ...s,
         reset:true
       }
     }
-
+    // Function in creating a frog object to be displayed in the middle of the winning square
     const createWinFrog = () => {
       return <Frog>{
         id: wonSquare[0].id + "frog",
@@ -112,13 +120,16 @@ function main() {
         radius: 30
       }
     },
-
-    frogCollidedRiver = s.obstacles.filter(r=> r.type === "rect-river").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
-    frogCollidedGround = s.obstacles.filter(r=> r.type === "rect-ground").filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
+    // Boolean to check if the frog has hit the water in the river
+    frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
+    // Boolean to check if the frog has hit any obstacles on the ground
+    frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
+    // To check if the frog is on a river row
     frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
-    if (s.gameOver) {
-      if(s.lives > 0) {
-        return <state> {
+    // If the frog has hit river or obstacle on ground, gameOver will be true
+    if (s.gameOver) { 
+      if(s.lives > 0) { //Checks if all lives is over
+        return <state> { //There is still lives, frogs get reset with all previous earned score resetted.
           ...s,
           lives: s.lives - 1,
           frog: createFrog(),
@@ -128,7 +139,7 @@ function main() {
         }
       }
       else {
-        return <state> {
+        return <state> { //Ends the game, as gameOver remains true, proceeds to display Game Over message on screen
           ...s,
           lives: s.lives - 1 ,
           score: s.score - s.scoreOnLevel,
@@ -136,11 +147,11 @@ function main() {
         }
       }
     }
-    if (s.reset === true) {
+    if (s.reset === true) { //Resets the game with new background and obstacles based on the seed
       return stateInit(s)
     }
 
-    return <state> {
+    return <state> { // Returns a general new tick to check for winCondition
       ...s,
       frog: {
         ...s.frog,
@@ -157,14 +168,16 @@ function main() {
       reset: s.frogWins === 5 ? true : false
     }
   }
+
+  //Tick indicator class
   class Tick { constructor(public readonly time: number) {}};
 
 
 
-  // Initialises initial game state
+
 
   // Function to return the frog back to the opposite side of the canvas if it has passed through
-  // the canvas boundaries
+  // the canvas boundaries, won't work for y-axis to prevent cheating
   const 
   torusWrap = ({x,y}:Vec) => { 
     const wrap = (v:number) => 
@@ -176,16 +189,16 @@ function main() {
 
 
 
-  /* Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved at the latest tick. 
-  More features to be added soon that includes updating state to check collision etc.
+  /* 
+  Function reduceState to update the state of the game, checks for whether it is just a tick update or if the frog has moved or if the state needs a reset. 
   */
   function reduceState(s: state, e: Move|Tick|Reset): state {
      return e instanceof Move ? {...s,
-      score: s.gameOver ? s.score : s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.score : s.score - e.y,
-      scoreOnLevel: s.gameOver? s.scoreOnLevel : s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.scoreOnLevel : s.scoreOnLevel - e.y,
+      score: s.gameOver ? s.score : s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.score : s.score - e.y, // If Frog position is at the start and it tries to move downwards, change nothing on the score
+      scoreOnLevel: s.gameOver ? s.scoreOnLevel : s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.scoreOnLevel : s.scoreOnLevel - e.y, // scoreOnLevel to help resetting the score if player died in this level
       frog: {
         ...s.frog,
-        pos: s.gameOver ? s.frog.pos : torusWrap(s.frog.pos.add(new Vec(e.x, e.y))),
+        pos: s.gameOver ? s.frog.pos : torusWrap(s.frog.pos.add(new Vec(e.x, e.y))), // changes the position of the frog
       }
      } : e instanceof Reset ? 
     reset(s)
@@ -193,6 +206,7 @@ function main() {
      tick(s, e.time);
   }
 
+  // reset function to help in resetting back to first level
   function reset(s:state) {
     return <state>{
       ...s, gameOver: false, objCount: 0, score: 0, frogWins: 0, level: 1, rngSeed: 80, lives: 5, scoreOnLevel: 0, highScore: s.highScore, reset: true
@@ -205,7 +219,7 @@ function main() {
   }
 
   // Function to create obstacles or background
-  const createObstacle = (type: "rect-ground" | "rect-river" | "river" | "ground" | "turtle" | "goal") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
+  const createObstacle = (type: "rect-ground" | "rect-river" | "river" | "ground" | "goal") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
     <Obstacle> {
       pos: pos,
       vel: vel,
@@ -215,6 +229,7 @@ function main() {
       height: height
     }
 
+  //RNG class to used for randomizing new background and obstacles
   class RNG {
       // LCG using GCC's constants
       m = 0x80000000; // 2**31
@@ -235,12 +250,12 @@ function main() {
     }
 
 
-  // Adds random backgrounds into the mix for potential additional levels
+  // Adds random backgrounds into the mix for additional levels and adds them into the background array of the game state
   function createBackgrounds(s: state): state {
     const rng = new RNG(s.rngSeed * 2)
     const nextType = () => rng.nextFloat() > 0.6 ? "river" : "ground";
     const background = [...Array(Constants.Rows)]
-      .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(100)(new Vec(0, i * 100))(new Vec(0,0)));
+      .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(Constants.BackgroundHeight)(new Vec(0, i * 100))(new Vec(0,0)));
 
     return <state>{
       ...s,
@@ -250,39 +265,40 @@ function main() {
 
 
 
-
+  //Boolean used to check if the obstacle is on top of a river. 
   const riverCollided = ([a,b]:[number,Obstacle]) => b.type === "river" && a > b.pos.y && a < b.pos.y + b.height  
 
+  //Function used to generate obstacles for an empty state 
   function createObstacles(s: state): state{
 
     const rng = new RNG(s.rngSeed); 
 
-      
+    //Used to set random obstacle width
     const nextRandom = () => rng.nextFloat() * 50;
-
+    //Used to set Obstacle at random places
     const nextRandomX = () => rng.nextFloat() * 900;
 
     // pseudo-random distribution of river to ground background types
       const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
-        .map((_,i) => riverCollided([110, s.background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2, 0)): 
+        .map((_,i)  =>  riverCollided([110, s.background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 110))(new Vec(-1.1, 0)): 
         createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2 * s.level, 0)));
       const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([210, s.background[2]]) ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(1 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 210))(new Vec(1* s.level, 0)));
+      .map((_,i) => riverCollided([210, s.background[2]]) ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 210))(new Vec(1 * s.level, 0)): 
+      createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 210))(new Vec(1* s.level, 0)));
       const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([310, s.background[3]]) ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-0.5 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 310))(new Vec(-0.5 * s.level, 0)));
+      .map((_,i) => riverCollided([310, s.background[3]]) ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 310))(new Vec(-0.5 * s.level, 0)): 
+      createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 310))(new Vec(-0.5 * s.level, 0)));
       const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([510, s.background[5]]) ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(1.3 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 510))(new Vec(1.3 * s.level, 0)));
+      .map((_,i) => riverCollided([510, s.background[5]]) ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 510))(new Vec(1.2 * s.level, 0)): 
+      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 510))(new Vec(1.3 * s.level, 0)));
       const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([610, s.background[6]]) ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 610))(new Vec(-0.7 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 610))(new Vec(-0.7 * s.level, 0)));
+      .map((_,i) => riverCollided([610, s.background[6]]) ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 610))(new Vec(-0.7 * s.level, 0)): 
+      createObstacle("rect-ground")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 610))(new Vec(-0.7 * s.level, 0)));
       const obstacleRow5 = [...Array(Constants.CanvasSize/100)]
-      .map((_,i) => createObstacle("goal")(i)(Constants.CanvasSize/5)(100)(new Vec(i * Constants.CanvasSize/5, 0))(new Vec(0, 0)));
+      .map((_,i) => createObstacle("goal")(i)(Constants.CanvasSize/5)(Constants.BackgroundHeight)(new Vec(i * Constants.CanvasSize/5, 0))(new Vec(0, 0)));
       const obstacleRow6 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([710, s.background[7]]) ? createObstacle("rect-river")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 710))(new Vec(0.33 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 710))(new Vec(0.33 * s.level, 0)));
+      .map((_,i) => riverCollided([710, s.background[7]]) ? createObstacle("rect-river")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 710))(new Vec(0.33 * s.level, 0)): 
+      createObstacle("rect-ground")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 710))(new Vec(0.33 * s.level, 0)));
 
 
       // Concatenates all obstacles into one array
@@ -324,10 +340,10 @@ function main() {
   const moveRight = observeKey('keydown', 'd', () => new Move(20, 0));
   const moveUp = observeKey('keydown', 'w', () => new Move(0, -100));
   const moveDown = observeKey('keydown', 's', () => new Move(0, 100));        
-  const enterCheck = observeKey("keydown", "Enter", () => new Reset);
+  const enterCheck = observeKey("keydown", "Enter", () => new Reset); //Pressing the enter key indicates a reset for the game state to process.
 
 
-  // updates the frogs position and adds in Obstacles if not initialized, else it will update the new positioning
+  // updates the frogs position and adds in Obstacles/Background/WinningFrogs if not initialized, else it will update the new positioning
   // of each obstacles per tick and makes sure that frog stays on top of everything
   function updateState(state:state): void {
 
@@ -477,6 +493,9 @@ function main() {
     const score = document.getElementById("scoreValue") || createScore();
     score.textContent = String(state.score);
     const update = document.getElementById("frogUpdate") || createUpdateFrog();
+
+
+    //If state indicates a reset, removes all svg elements
     if (state.reset === true) {
       state.obstacles.forEach(b => {
         const v = document.getElementById(b.id);
@@ -497,7 +516,6 @@ function main() {
       gameOver?.remove();
       gameOver2?.remove();
     }
-    console.log(state);
   }
 
   /**
@@ -506,7 +524,7 @@ function main() {
   const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
 
-  // Creates the Frog
+  // Creates a Frog Object at the starting position
   function createFrog(): Frog {
     return {
       id: 'frog',
@@ -528,3 +546,5 @@ if (typeof window !== "undefined") {
     main();
   };
 }
+
+
