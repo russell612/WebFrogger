@@ -112,6 +112,36 @@ function main() {
       }
     }
     // Function in creating a frog object to be displayed in the middle of the winning square
+
+    // Boolean to check if the frog has hit the water in the river
+    const frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
+    // Boolean to check if the frog has hit any obstacles on the ground
+    frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollided([s.frog, r])).length > 0,
+    // To check if the frog is on a river row
+    frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
+    // If the frog has hit river or obstacle on ground, gameOver will be true
+    if (s.gameOver) { 
+      return gameOverHandler(s)
+    }
+    if (s.reset === true) { //Resets the game with new background and obstacles based on the seed
+      return stateInit(s)
+    }
+
+    if (winCondition(s.frog)) {
+      return winConditionHandler(s, wonSquare)
+    }
+    return <state> { // Returns a general new tick to check for winCondition and collisions
+      ...s,
+      obstacles: s.gameOver ? s.obstacles: s.obstacles.map(moveObs),
+      time: elapsed,
+      gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
+      highScore: s.score > s.highScore ? s.score : s.highScore,
+      reset: s.frogWins === 5 ? true : false
+    }
+  }
+
+  function winConditionHandler(s:state, wonSquare: Obstacle[]): state {
+
     const createWinFrog = () => {
       return <Frog>{
         id: wonSquare[0].id + "frog",
@@ -119,57 +149,43 @@ function main() {
         vel: Vec.Zero,
         radius: 30
       }
-    },
-    // Boolean to check if the frog has hit the water in the river
-    frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
-    // Boolean to check if the frog has hit any obstacles on the ground
-    frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollided([s.frog, r])).length > 0,
-    // To check if the frog is on a river row
-    frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
-    // If the frog has hit river or obstacle on ground, gameOver will be true
-    if (s.gameOver) { 
-      if(s.lives > 0) { //Checks if all lives is over
-        return <state> { //There is still lives, frogs get reset with all previous earned score resetted.
-          ...s,
-          lives: s.lives - 1,
-          frog: createFrog(),
-          gameOver: false,
-          score: s.score - s.scoreOnLevel,
-          scoreOnLevel: 0,
-          elapsed: elapsed
-        }
-      }
-      else {
-        return <state> { //Ends the game, as gameOver remains true, proceeds to display Game Over message on screen
-          ...s,
-          lives: s.lives - 1 ,
-          score: s.score - s.scoreOnLevel,
-          scoreOnLevel: 0,
-          elapsed: elapsed
-        }
-      }
-    }
-    if (s.reset === true) { //Resets the game with new background and obstacles based on the seed
-      return stateInit(s)
     }
 
-    return <state> { // Returns a general new tick to check for winCondition
+    return <state> {
       ...s,
       frog: {
         ...s.frog,
-        pos: winCondition(s.frog) ? new Vec(450, Constants.CanvasSize - 50) : s.frog.pos
+        pos: new Vec(450, Constants.CanvasSize - 50)
       },
-      obstacles: s.gameOver ? s.obstacles: s.obstacles.map(moveObs),
-      time: elapsed,
-      gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
-      frogWins: winCondition(s.frog) ? s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ? s.frogWins : s.frogWins + 1: s.frogWins,
-      score: winCondition(s.frog) ? s.score + winConditionhandler() : s.score,
-      frogWinPos: winCondition(s.frog) ? s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos) : s.frogWinPos,
-      scoreOnLevel: winCondition(s.frog) ? 0 : s.scoreOnLevel,
-      highScore: s.score > s.highScore ? s.score : s.highScore,
-      reset: s.frogWins === 5 ? true : false
+      frogWins: s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ? s.frogWins : s.frogWins + 1,
+      score: s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ? s.score : s.score + 900,
+      frogWinPos: s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos),
+      scoreOnLevel: 0
     }
   }
+
+
+  function gameOverHandler(s:state): state {
+    if(s.lives > 0) { //Checks if all lives is over
+      return <state> { //There is still lives, frogs get reset with all previous earned score resetted.
+        ...s,
+        lives: s.lives - 1,
+        frog: createFrog(),
+        gameOver: false,
+        score: s.score - s.scoreOnLevel,
+        scoreOnLevel: 0,
+      }
+    }
+    else {
+      return <state> { //Ends the game, as gameOver remains true, proceeds to display Game Over message on screen
+        ...s,
+        lives: s.lives - 1 ,
+        score: s.score - s.scoreOnLevel,
+        scoreOnLevel: 0
+      }
+    }
+  }
+
 
   //Tick indicator class
   class Tick { constructor(public readonly time: number) {}};
