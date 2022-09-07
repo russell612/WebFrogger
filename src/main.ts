@@ -96,13 +96,8 @@ function main() {
     //The win condition of the game
     winCondition = (a: Frog) => a.pos.y < 100,
     //wonSquare is using bodiesCollided to check which winning square has the frog entered
-    wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([s.frog, r])),
-    //winCondition handler helps in checking if the winning square already has been before, if true then it will reset with no added score, else it will return 900 as a bonus for getting 
-    //the frog to the winning square.
-    winConditionhandler = () => {
-      const frogScore = s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ?  0 : 900;
-      return frogScore
-    }
+    wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([s.frog, r]))
+
     // Checks if the level is finished, it will return a state with the reset boolean true to indicate removing all svg elements to start a new level.
     if (s.frogWins === 5 && s.reset === false) {
       return <state>{
