@@ -31,8 +31,7 @@ function main() {
     height: number;
   }>;
 
-
-
+  //Frog type with the required attributes
   type Frog = Readonly<{
     id: string;
     pos: Vec;
@@ -100,15 +99,16 @@ function main() {
     wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([s.frog, r])),
     //winCondition handler helps in checking if the winning square already has been before, if true then it will reset with no added score, else it will return 900 as a bonus for getting 
     //the frog to the winning square.
-    winConditionhandler = (a: Frog) => {
-      const frogScore = document.getElementById(wonSquare[0].id + "frog") ?  -100 : 900;
+    winConditionhandler = () => {
+      const frogScore = s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ?  0 : 900;
       return frogScore
     }
     // Checks if the level is finished, it will return a state with the reset boolean true to indicate removing all svg elements to start a new level.
     if (s.frogWins === 5 && s.reset === false) {
       return <state>{
         ...s,
-        reset:true
+        reset:true,
+        elapsed: elapsed
       }
     }
     // Function in creating a frog object to be displayed in the middle of the winning square
@@ -121,9 +121,9 @@ function main() {
       }
     },
     // Boolean to check if the frog has hit the water in the river
-    frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
+    frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
     // Boolean to check if the frog has hit any obstacles on the ground
-    frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r => bodiesCollided([s.frog, r])).length > 0,
+    frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollided([s.frog, r])).length > 0,
     // To check if the frog is on a river row
     frogRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).map(x => x.type === "rect-river" ? true : false)[0] === true;
     // If the frog has hit river or obstacle on ground, gameOver will be true
@@ -135,7 +135,8 @@ function main() {
           frog: createFrog(),
           gameOver: false,
           score: s.score - s.scoreOnLevel,
-          scoreOnLevel: 0
+          scoreOnLevel: 0,
+          elapsed: elapsed
         }
       }
       else {
@@ -143,7 +144,8 @@ function main() {
           ...s,
           lives: s.lives - 1 ,
           score: s.score - s.scoreOnLevel,
-          scoreOnLevel: 0
+          scoreOnLevel: 0,
+          elapsed: elapsed
         }
       }
     }
@@ -160,9 +162,9 @@ function main() {
       obstacles: s.gameOver ? s.obstacles: s.obstacles.map(moveObs),
       time: elapsed,
       gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
-      frogWins: winCondition(s.frog) ? document.getElementById(wonSquare[0].id + "frog") ? s.frogWins : s.frogWins + 1: s.frogWins,
-      frogWinPos: winCondition(s.frog) ? document.getElementById(wonSquare[0].id + "frog") ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos) : s.frogWinPos,
-      score: winCondition(s.frog) ? s.score + winConditionhandler(s.frog) : s.score,
+      frogWins: winCondition(s.frog) ? s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ? s.frogWins : s.frogWins + 1: s.frogWins,
+      score: winCondition(s.frog) ? s.score + winConditionhandler() : s.score,
+      frogWinPos: winCondition(s.frog) ? s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos) : s.frogWinPos,
       scoreOnLevel: winCondition(s.frog) ? 0 : s.scoreOnLevel,
       highScore: s.score > s.highScore ? s.score : s.highScore,
       reset: s.frogWins === 5 ? true : false
@@ -314,7 +316,7 @@ function main() {
   // Initialises the initial state with said obstacles
   function stateInit(s?: state): state {
 
-    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 4, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore, reset: false} : {time: 0, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 4, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0, reset: false};
+    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 4, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore, reset: false} : {time: 0, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0, reset: false};
     const stateWithBg: state = createBackgrounds(initState)
     const finalStartState: state = createObstacles(stateWithBg);
 
@@ -462,6 +464,8 @@ function main() {
       const v = document.getElementById(b.id) || createWinFrogSVG();
     })
 
+
+    //Creates Game Over Text for the user, and asks them to press Enter in order to continue playing
     if (state.gameOver === true && state.lives < 0) {
       const createText1 = () => {
         const v = document.createElementNS(svg.namespaceURI, "text")!;
@@ -534,8 +538,9 @@ function main() {
     }
   } 
 
-    // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
-  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), merge(moveDown, moveLeft, moveRight, moveUp, enterCheck) ,scan(reduceState, stateInit())).subscribe(updateState);
+  // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
+  const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), 
+    merge(moveDown, moveLeft, moveRight, moveUp, enterCheck) ,scan(reduceState, stateInit())).subscribe(updateState);
 }
 
 
