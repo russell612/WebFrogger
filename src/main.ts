@@ -60,7 +60,7 @@ function main() {
   }>
 
   // Constant Storage
-  const Constants = {
+  const CONSTANTS = {
     CanvasSize: 900,
     StartObstaclesCount: 10,
     ObstaclesPerRow: 3,
@@ -165,12 +165,12 @@ function main() {
       ...s,
       frog: {
         ...s.frog,
-        pos: new Vec(450, Constants.CanvasSize - 50)
+        pos: new Vec(450, CONSTANTS.CanvasSize - 50) //Resets frog back to original position
       },
-      frogWins: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.frogWins : s.frogWins + 1,
+      frogWins: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.frogWins : s.frogWins + 1, // Checks if the player has gotten this square before, will not add frogWins, score bonus and create a new Winning Frog if true.
       score: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.score : s.score + 900,
       frogWinPos: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos),
-      scoreOnLevel: 0
+      scoreOnLevel: 0 
     }
   }
 
@@ -206,9 +206,9 @@ function main() {
   const 
   torusWrap = ({x,y}:Vec) => { 
     const wrap = (v:number) => 
-      v < 0 ? v + Constants.CanvasSize : v > Constants.CanvasSize ? v - Constants.CanvasSize : v;
+      v < 0 ? v + CONSTANTS.CanvasSize : v > CONSTANTS.CanvasSize ? v - CONSTANTS.CanvasSize : v;
     const wrapY = (v: number) =>
-      v > Constants.CanvasSize ? 850 : v
+      v > CONSTANTS.CanvasSize ? 850 : v
     return new Vec(wrap(x),wrapY(y))
   };
 
@@ -219,8 +219,8 @@ function main() {
   */
   function reduceState(s: state, e: Move|Tick|Reset): state {
      return e instanceof Move ? {...s,
-      score: s.gameOver ? s.score : s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.score : s.score - e.y, // If Frog position is at the start and it tries to move downwards, change nothing on the score
-      scoreOnLevel: s.gameOver ? s.scoreOnLevel : s.frog.pos.y === Constants.CanvasSize - 50 && e.y > 0 ? s.scoreOnLevel : s.scoreOnLevel - e.y, // scoreOnLevel to help resetting the score if player died in this level
+      score: s.gameOver ? s.score : s.frog.pos.y === CONSTANTS.CanvasSize - 50 && e.y > 0 ? s.score : s.score - e.y, // If Frog position is at the start and it tries to move downwards, change nothing on the score
+      scoreOnLevel: s.gameOver ? s.scoreOnLevel : s.frog.pos.y === CONSTANTS.CanvasSize - 50 && e.y > 0 ? s.scoreOnLevel : s.scoreOnLevel - e.y, // scoreOnLevel to help resetting the score if player died in this level
       frog: {
         ...s.frog,
         pos: s.gameOver ? s.frog.pos : torusWrap(s.frog.pos.add(new Vec(e.x, e.y))), // changes the position of the frog
@@ -259,8 +259,8 @@ function main() {
   // Adds random backgrounds into the mix for additional levels and adds them into the background array of the game state
   function createBackgrounds(s: state): state {
     const nextType = (s:number) => s <= 3 ? "river" : "ground";
-    const background = [...Array(Constants.Rows)]
-      .map((_,i) => createObstacle(nextType(i))(i + 100)(Constants.CanvasSize)(Constants.BackgroundHeight)(new Vec(0, i * 100))(new Vec(0,0))("None"));
+    const background = [...Array(CONSTANTS.Rows)]
+      .map((_,i) => createObstacle(nextType(i))(i + 100)(CONSTANTS.CanvasSize)(CONSTANTS.BackgroundHeight)(new Vec(0, i * 100))(new Vec(0,0))("None"));
 
     return <state>{
       ...s,
@@ -276,32 +276,32 @@ function main() {
   //Function used to generate obstacles for an empty state 
   function createObstacles(s: state): state{
 
-      const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
-        .map((_,i)  =>  riverCollided([110, s.background[1]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("None"): 
-        createObstacle("croc")(i + 10)(Constants.MininumObstacleWidth)(Constants.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("Danger"): 
-        createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth - 70 + s.level*5)(80)(new Vec(i*300 - i*20, 110))(new Vec(-1.2 * s.level, 0))("None"));
-      const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([210, s.background[2]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("None"): 
-      createObstacle("croc")(i + 20)(Constants.MininumObstacleWidth - s.level*10)(Constants.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("Danger") : 
-      createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300, 210))(new Vec(1* s.level, 0))("None"));
-      const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([310, s.background[3]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("None"):
-      createObstacle("croc")(i + 30)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("Danger"): 
-      createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 - i*20, 310))(new Vec(-0.5 * s.level, 0))("None"));
-      const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([510, s.background[5]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("None"):
-      createObstacle("croc")(i + 50)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("Danger"):  
-      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 510))(new Vec(1.3 * s.level, 0))("None"));
-      const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([610, s.background[6]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("None"):
-      createObstacle("croc")(i + 60)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("Danger"): 
-      createObstacle("rect-ground")(i + 60)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 - i*20, 610))(new Vec(-0.7 * s.level, 0))("None"));
-      const obstacleRow5 = [...Array(Constants.CanvasSize/100)]
-      .map((_,i) => createObstacle("goal")(i)(Constants.CanvasSize/5)(Constants.BackgroundHeight)(new Vec(i * Constants.CanvasSize/5, 0))(new Vec(0, 0))("None"));
-      const obstacleRow6 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([710, s.background[7]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 70)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"):
-      createObstacle("croc")(i + 70)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("Danger"): 
-      createObstacle("rect-ground")(i + 70)(Constants.MininumObstacleWidth - 70 + s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"));
+      const obstacleRow0 = [...Array(CONSTANTS.ObstaclesPerRow)]
+        .map((_,i)  =>  riverCollided([110, s.background[1]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 10)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("None"): 
+        createObstacle("croc")(i + 10)(CONSTANTS.MininumObstacleWidth)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("Danger"): 
+        createObstacle("rect-ground")(i + 10)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(80)(new Vec(i*300 - i*20, 110))(new Vec(-1.2 * s.level, 0))("None"));
+      const obstacleRow1 = [...Array(CONSTANTS.ObstaclesPerRow)]
+      .map((_,i) => riverCollided([210, s.background[2]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 20)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("None"): 
+      createObstacle("croc")(i + 20)(CONSTANTS.MininumObstacleWidth - s.level*10)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("Danger") : 
+      createObstacle("rect-ground")(i + 20)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300, 210))(new Vec(1* s.level, 0))("None"));
+      const obstacleRow2 = [...Array(CONSTANTS.ObstaclesPerRow)]
+      .map((_,i) => riverCollided([310, s.background[3]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 30)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("None"):
+      createObstacle("croc")(i + 30)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("Danger"): 
+      createObstacle("rect-ground")(i + 30)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20, 310))(new Vec(-0.5 * s.level, 0))("None"));
+      const obstacleRow3 = [...Array(CONSTANTS.ObstaclesPerRow)]
+      .map((_,i) => riverCollided([510, s.background[5]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 50)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("None"):
+      createObstacle("croc")(i + 50)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("Danger"):  
+      createObstacle("rect-ground")(i + 50)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 510))(new Vec(1.3 * s.level, 0))("None"));
+      const obstacleRow4 = [...Array(CONSTANTS.ObstaclesPerRow)]
+      .map((_,i) => riverCollided([610, s.background[6]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 60)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("None"):
+      createObstacle("croc")(i + 60)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("Danger"): 
+      createObstacle("rect-ground")(i + 60)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20, 610))(new Vec(-0.7 * s.level, 0))("None"));
+      const obstacleRow5 = [...Array(CONSTANTS.CanvasSize/100)]
+      .map((_,i) => createObstacle("goal")(i)(CONSTANTS.CanvasSize/5)(CONSTANTS.BackgroundHeight)(new Vec(i * CONSTANTS.CanvasSize/5, 0))(new Vec(0, 0))("None"));
+      const obstacleRow6 = [...Array(CONSTANTS.ObstaclesPerRow)]
+      .map((_,i) => riverCollided([710, s.background[7]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 70)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"):
+      createObstacle("croc")(i + 70)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("Danger"): 
+      createObstacle("rect-ground")(i + 70)(CONSTANTS.MininumObstacleWidth - 70 + s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"));
 
 
       // Concatenates all obstacles into one array
@@ -489,7 +489,7 @@ function main() {
       const createText1 = () => {
         const v = document.createElementNS(svg.namespaceURI, "text")!;
         v.setAttribute("x", "48%");
-        v.setAttribute("y", String(Constants.CanvasSize/2 - 50));
+        v.setAttribute("y", String(CONSTANTS.CanvasSize/2 - 50));
         v.setAttribute("class", "gameover");
         v.setAttribute("id", "gameover")
         v.textContent = "Game Over";
@@ -498,7 +498,7 @@ function main() {
       const createText2 = () => {
         const v2 = document.createElementNS(svg.namespaceURI, "text")!;
         v2.setAttribute("x", "50%");
-        v2.setAttribute("y", String(Constants.CanvasSize/2 + 50));
+        v2.setAttribute("y", String(CONSTANTS.CanvasSize/2 + 50));
         v2.setAttribute("class", "restart");
         v2.setAttribute("id", "gameover2")
         v2.textContent = "Press Enter to Restart Game";
