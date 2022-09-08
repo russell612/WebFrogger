@@ -132,7 +132,7 @@ function main() {
         return s.obstacles
       }
       else {
-        return s.obstacles.map(x => x.type === "croc" ? s.time % 500 < 250 ? <Obstacle> {...x, status: "Clear"} : {...x,status: "Danger"}: {...x, status: "None"}).map(moveObs)
+        return s.obstacles.map(x => x.type === "croc" ? s.time % 800 - (s.level*10) < 250 ? <Obstacle> {...x, status: "Clear"} : {...x,status: "Danger"}: {...x, status: "None"}).map(moveObs)
       }
     }
 
