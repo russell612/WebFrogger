@@ -30,6 +30,7 @@ function main() {
     type: string;
     width: number;
     height: number;
+    status: string;
   }>;
 
   //Frog type with the required attributes
@@ -63,7 +64,7 @@ function main() {
     CanvasSize: 900,
     StartObstaclesCount: 10,
     ObstaclesPerRow: 3,
-    MininumObstacleWidth: 100,
+    MininumObstacleWidth: 180,
     Rows: 8,
     ObstacleHeight: 80,
     BackgroundHeight: 100
@@ -110,6 +111,7 @@ function main() {
 
     // Boolean to check if the frog has hit the water in the river
     const frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
+    frogCollidedCroc = s.obstacles.filter(r => (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => r.type === "croc").filter(r => bodiesCollided([s.frog, r])).filter(r => r.status === "Danger").length > 0,
     // Boolean to check if the frog has hit any obstacles on the ground
     frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollided([s.frog, r])).length > 0,
     // To check if the frog is on a river row
@@ -125,11 +127,21 @@ function main() {
     if (winCondition(s.frog)) {
       return winConditionHandler(s, wonSquare)
     }
+    function handleObstacles() {
+      if(s.gameOver) {
+        return s.obstacles
+      }
+      else {
+        return s.obstacles.map(x => x.type === "croc" ? s.time % 500 < 250 ? <Obstacle> {...x, status: "Clear"} : {...x,status: "Danger"}: {...x, status: "None"}).map(moveObs)
+      }
+    }
+
+
     return <state> { // Returns a general new tick to check for winCondition and collisions
       ...s,
-      obstacles: s.gameOver ? s.obstacles: s.obstacles.map(moveObs),
+      obstacles: handleObstacles(),
       time: elapsed,
-      gameOver: frogRiver ? frogCollidedRiver: frogCollidedGround,
+      gameOver: frogRiver ? (frogCollidedRiver || frogCollidedCroc) : frogCollidedGround,
       highScore: s.score > s.highScore ? s.score : s.highScore,
       reset: s.frogWins === 5 ? true : false
     }
@@ -232,43 +244,23 @@ function main() {
   }
 
   // Function to create obstacles or background
-  const createObstacle = (type: "rect-ground" | "rect-river" | "river" | "ground" | "goal") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) =>
+  const createObstacle = (type: "rect-ground" | "rect-river" | "croc" | "river" | "ground" | "goal") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) => (status: string) =>
     <Obstacle> {
       pos: pos,
       vel: vel,
       type: type,
       id: type + id,
       width: width,
-      height: height
-    }
-
-  //RNG class to used for randomizing new background and obstacles
-  class RNG {
-      // LCG using GCC's constants
-      m = 0x80000000; // 2**31
-      a = 1103515245;
-      c = 12345;
-      state: number;
-      constructor(seed: number) {
-        this.state = seed ? seed : Math.floor(Math.random() * (this.m - 1));
-      }
-      nextInt() {
-        this.state = (this.a * this.state + this.c) % this.m;
-        return this.state;
-      }
-      nextFloat() {
-        // returns in range [0,1]
-        return this.nextInt() / (this.m - 1);
-      }
+      height: height,
+      status: status
     }
 
 
   // Adds random backgrounds into the mix for additional levels and adds them into the background array of the game state
   function createBackgrounds(s: state): state {
-    const rng = new RNG(s.rngSeed * 2)
-    const nextType = () => rng.nextFloat() > 0.6 ? "river" : "ground";
+    const nextType = (s:number) => s <= 3 ? "river" : "ground";
     const background = [...Array(Constants.Rows)]
-      .map((_,i) => createObstacle(nextType())(i + 100)(Constants.CanvasSize)(Constants.BackgroundHeight)(new Vec(0, i * 100))(new Vec(0,0)));
+      .map((_,i) => createObstacle(nextType(i))(i + 100)(Constants.CanvasSize)(Constants.BackgroundHeight)(new Vec(0, i * 100))(new Vec(0,0))("None"));
 
     return <state>{
       ...s,
@@ -284,34 +276,32 @@ function main() {
   //Function used to generate obstacles for an empty state 
   function createObstacles(s: state): state{
 
-    const rng = new RNG(s.rngSeed); 
-
-    //Used to set random obstacle width
-    const nextRandom = () => rng.nextFloat() * 50;
-    //Used to set Obstacle at random places
-    const nextRandomX = () => rng.nextFloat() * 900;
-
-    // pseudo-random distribution of river to ground background types
       const obstacleRow0 = [...Array(Constants.ObstaclesPerRow)]
-        .map((_,i)  =>  riverCollided([110, s.background[1]]) ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 110))(new Vec(-1.1, 0)): 
-        createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth + nextRandom())(80)(new Vec(nextRandomX(), 110))(new Vec(-1.2 * s.level, 0)));
+        .map((_,i)  =>  riverCollided([110, s.background[1]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 10)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("None"): 
+        createObstacle("croc")(i + 10)(Constants.MininumObstacleWidth)(Constants.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("Danger"): 
+        createObstacle("rect-ground")(i + 10)(Constants.MininumObstacleWidth - 70 + s.level*5)(80)(new Vec(i*300 - i*20, 110))(new Vec(-1.2 * s.level, 0))("None"));
       const obstacleRow1 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([210, s.background[2]]) ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 210))(new Vec(1 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 210))(new Vec(1* s.level, 0)));
+      .map((_,i) => riverCollided([210, s.background[2]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 20)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("None"): 
+      createObstacle("croc")(i + 20)(Constants.MininumObstacleWidth - s.level*10)(Constants.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("Danger") : 
+      createObstacle("rect-ground")(i + 20)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300, 210))(new Vec(1* s.level, 0))("None"));
       const obstacleRow2 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([310, s.background[3]]) ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 310))(new Vec(-0.5 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 310))(new Vec(-0.5 * s.level, 0)));
+      .map((_,i) => riverCollided([310, s.background[3]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 30)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("None"):
+      createObstacle("croc")(i + 30)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("Danger"): 
+      createObstacle("rect-ground")(i + 30)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 - i*20, 310))(new Vec(-0.5 * s.level, 0))("None"));
       const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([510, s.background[5]]) ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 510))(new Vec(1.2 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 510))(new Vec(1.3 * s.level, 0)));
+      .map((_,i) => riverCollided([510, s.background[5]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("None"):
+      createObstacle("croc")(i + 50)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("Danger"):  
+      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 - i*20, 510))(new Vec(1.3 * s.level, 0))("None"));
       const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([610, s.background[6]]) ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 610))(new Vec(-0.7 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 60)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 610))(new Vec(-0.7 * s.level, 0)));
+      .map((_,i) => riverCollided([610, s.background[6]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("None"):
+      createObstacle("croc")(i + 60)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("Danger"): 
+      createObstacle("rect-ground")(i + 60)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 - i*20, 610))(new Vec(-0.7 * s.level, 0))("None"));
       const obstacleRow5 = [...Array(Constants.CanvasSize/100)]
-      .map((_,i) => createObstacle("goal")(i)(Constants.CanvasSize/5)(Constants.BackgroundHeight)(new Vec(i * Constants.CanvasSize/5, 0))(new Vec(0, 0)));
+      .map((_,i) => createObstacle("goal")(i)(Constants.CanvasSize/5)(Constants.BackgroundHeight)(new Vec(i * Constants.CanvasSize/5, 0))(new Vec(0, 0))("None"));
       const obstacleRow6 = [...Array(Constants.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([710, s.background[7]]) ? createObstacle("rect-river")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 710))(new Vec(0.33 * s.level, 0)): 
-      createObstacle("rect-ground")(i + 70)(Constants.MininumObstacleWidth + nextRandom())(Constants.ObstacleHeight)(new Vec(nextRandomX(), 710))(new Vec(0.33 * s.level, 0)));
+      .map((_,i) => riverCollided([710, s.background[7]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 70)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"):
+      createObstacle("croc")(i + 70)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("Danger"): 
+      createObstacle("rect-ground")(i + 70)(Constants.MininumObstacleWidth - 70 + s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"));
 
 
       // Concatenates all obstacles into one array
@@ -407,12 +397,18 @@ function main() {
         v.setAttribute("id", b.id);
         v.setAttribute("width", String(b.width));
         v.setAttribute("height", String(b.height));
-        b.type === "goal" ? v.setAttribute("style", "stroke: white;") : b.type === "rect-river" ? v.setAttribute("style", "fill: orange") : v.setAttribute("style", "fill: purple");
+        b.type === "goal" ? v.setAttribute("style", "stroke: white;") : b.type === "rect-river" ? v.setAttribute("style", "fill: orange") : b.type === "croc" ? v.setAttribute("style", "fill: red") : v.setAttribute("style", "fill: purple");
         v.classList.add("obstacle");
         svg.appendChild(v)
         return v;
       }
       const v = document.getElementById(b.id) || createObstacleView();
+      if (b.type === "croc" && b.status === "Danger"){
+        v.setAttribute("style", "fill: red")
+      }
+      else if (b.type === "croc" && b.status === "Clear") {
+        v.setAttribute("style", "fill: violet")
+      }
       v.setAttribute("x", String(b.pos.x));
       v.setAttribute("y", String(b.pos.y));
     })
