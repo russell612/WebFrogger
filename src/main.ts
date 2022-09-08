@@ -152,9 +152,9 @@ function main() {
         ...s.frog,
         pos: new Vec(450, Constants.CanvasSize - 50)
       },
-      frogWins: s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ? s.frogWins : s.frogWins + 1,
-      score: s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ? s.score : s.score + 900,
-      frogWinPos: s.frogWinPos.find(x => x.id === wonSquare[0].id + "frog") !== undefined ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos),
+      frogWins: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.frogWins : s.frogWins + 1,
+      score: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.score : s.score + 900,
+      frogWinPos: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos),
       scoreOnLevel: 0
     }
   }
@@ -358,7 +358,7 @@ function main() {
 
   // updates the frogs position and adds in Obstacles/Background/WinningFrogs if not initialized, else it will update the new positioning
   // of each obstacles per tick and makes sure that frog stays on top of everything
-  function updateState(state:state): void {
+  function updateView(state:state): void {
 
     const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
@@ -551,7 +551,7 @@ function main() {
 
   // Ticks every 10 ms to update game state and process any new input from the keyboard. Updates the game accordingly using updateState function
   const subscription = interval(10).pipe(map(elapsed => new Tick(elapsed)), 
-    merge(moveDown, moveLeft, moveRight, moveUp, enterCheck) ,scan(reduceState, stateInit())).subscribe(updateState);
+    merge(moveDown, moveLeft, moveRight, moveUp, enterCheck) ,scan(reduceState, stateInit())).subscribe(updateView);
 }
 
 
