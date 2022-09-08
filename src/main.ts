@@ -111,6 +111,7 @@ function main() {
 
     // Boolean to check if the frog has hit the water in the river
     const frogCollidedRiver = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollidedWater([s.frog, r])).length == 0,
+    // Special Boolean to check for Crocodiles, will register that the frog is on the crocodile if its status is "Clear", else it will act like it is not there and cause the player to lose
     frogCollidedCroc = s.obstacles.filter(r => (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => r.type === "croc").filter(r => bodiesCollided([s.frog, r])).filter(r => r.status === "Danger").length > 0,
     // Boolean to check if the frog has hit any obstacles on the ground
     frogCollidedGround = s.obstacles.filter(r=> (r.pos.y + r.height/2) === s.frog.pos.y).filter(r=> r.pos.y !== 0 ).filter(r => bodiesCollided([s.frog, r])).length > 0,
@@ -120,7 +121,7 @@ function main() {
     if (s.gameOver) { 
       return gameOverHandler(s)
     }
-    if (s.reset === true) { //Resets the game with new background and obstacles based on the seed
+    if (s.reset === true) { 
       return stateInit(s)
     }
 
@@ -129,9 +130,11 @@ function main() {
     }
     function handleObstacles() {
       if(s.gameOver) {
+        // If game over, no need to update obstacles
         return s.obstacles
       }
       else {
+        // Else if not, checks after a certain time period has passed to change the Crocodile's status
         return s.obstacles.map(x => x.type === "croc" ? s.time % 800 - (s.level*20) < 250 ? <Obstacle> {...x, status: "Clear"} : {...x,status: "Danger"}: {...x, status: "None"}).map(moveObs)
       }
     }
@@ -139,7 +142,7 @@ function main() {
 
     return <state> { // Returns a general new tick to check for winCondition and collisions
       ...s,
-      obstacles: handleObstacles(),
+      obstacles: handleObstacles(), // Function for ease of reading
       time: elapsed,
       gameOver: frogRiver ? (frogCollidedRiver || frogCollidedCroc) : frogCollidedGround,
       highScore: s.score > s.highScore ? s.score : s.highScore,
