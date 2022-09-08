@@ -20,6 +20,7 @@ function main() {
   // initialises the types used for the game as well as state with its required values
   type key = "w" | "s" | "a" | "d" | "Enter";
 
+
   // Obstacle type with its corresponding attributes and types
   // For circle type obstacles, width and height === radius
   type Obstacle = Readonly<{
@@ -43,7 +44,6 @@ function main() {
   type state = Readonly<{
     time: number ;
     gameOver: Boolean;
-    objCount: number;
     obstacles: ReadonlyArray<Obstacle>;
     background: ReadonlyArray<Obstacle>;
     frog: Frog;
@@ -327,7 +327,7 @@ function main() {
   // Initialises the initial state with new obstacles and backgrounds
   function stateInit(s?: state): state {
 
-    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 0, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore, reset: false} : {time: 0, gameOver: false, objCount: 0, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0, reset: false};
+    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 0, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore, reset: false} : {time: 0, gameOver: false, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0, reset: false};
     const stateWithBg: state = createBackgrounds(initState)
     const finalStartState: state = createObstacles(stateWithBg);
 
