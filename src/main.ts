@@ -277,30 +277,26 @@ function main() {
   function createObstacles(s: state): state{
 
       const obstacleRow0 = [...Array(CONSTANTS.ObstaclesPerRow)]
-        .map((_,i)  =>  riverCollided([110, s.background[1]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 10)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("None"): 
-        createObstacle("croc")(i + 10)(CONSTANTS.MininumObstacleWidth)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("Danger"): 
-        createObstacle("rect-ground")(i + 10)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(80)(new Vec(i*300 - i*20, 110))(new Vec(-1.2 * s.level, 0))("None"));
+        .map((_,i)  =>  i % 2 == 0 ? createObstacle("rect-river")(i + 10)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("None"): 
+        createObstacle("croc")(i + 10)(CONSTANTS.MininumObstacleWidth)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20, 110))(new Vec(-1.1, 0))("Danger"));
       const obstacleRow1 = [...Array(CONSTANTS.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([210, s.background[2]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 20)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("None"): 
-      createObstacle("croc")(i + 20)(CONSTANTS.MininumObstacleWidth - s.level*10)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("Danger") : 
-      createObstacle("rect-ground")(i + 20)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300, 210))(new Vec(1* s.level, 0))("None"));
+      .map((_,i) =>  i % 2 == 0 ? createObstacle("rect-river")(i + 20)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("None"): 
+      createObstacle("croc")(i + 20)(CONSTANTS.MininumObstacleWidth - s.level*10)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + i*20 + s.rngSeed*s.level, 210))(new Vec(1 * s.level, 0))("Danger")); 
+
       const obstacleRow2 = [...Array(CONSTANTS.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([310, s.background[3]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 30)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("None"):
-      createObstacle("croc")(i + 30)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("Danger"): 
-      createObstacle("rect-ground")(i + 30)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20, 310))(new Vec(-0.5 * s.level, 0))("None"));
+      .map((_,i) => i % 2 == 0 ? createObstacle("rect-river")(i + 30)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("None"):
+      createObstacle("croc")(i + 30)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 310))(new Vec(-0.5 * s.level, 0))("Danger")); 
+
       const obstacleRow3 = [...Array(CONSTANTS.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([510, s.background[5]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 50)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("None"):
-      createObstacle("croc")(i + 50)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("Danger"):  
+      .map((_,i) =>  
       createObstacle("rect-ground")(i + 50)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 510))(new Vec(1.3 * s.level, 0))("None"));
       const obstacleRow4 = [...Array(CONSTANTS.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([610, s.background[6]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 60)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("None"):
-      createObstacle("croc")(i + 60)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("Danger"): 
+      .map((_,i) =>  
       createObstacle("rect-ground")(i + 60)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20, 610))(new Vec(-0.7 * s.level, 0))("None"));
       const obstacleRow5 = [...Array(CONSTANTS.CanvasSize/100)]
       .map((_,i) => createObstacle("goal")(i)(CONSTANTS.CanvasSize/5)(CONSTANTS.BackgroundHeight)(new Vec(i * CONSTANTS.CanvasSize/5, 0))(new Vec(0, 0))("None"));
       const obstacleRow6 = [...Array(CONSTANTS.ObstaclesPerRow)]
-      .map((_,i) => riverCollided([710, s.background[7]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 70)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"):
-      createObstacle("croc")(i + 70)(CONSTANTS.MininumObstacleWidth - s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("Danger"): 
+      .map((_,i) => 
       createObstacle("rect-ground")(i + 70)(CONSTANTS.MininumObstacleWidth - 70 + s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"));
 
 
