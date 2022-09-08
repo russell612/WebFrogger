@@ -135,7 +135,7 @@ function main() {
       }
       else {
         // Else if not, checks after a certain time period has passed to change the Crocodile's status
-        return s.obstacles.map(x => x.type === "croc" ? s.time % 800 - (s.level*20) < 250 ? <Obstacle> {...x, status: "Clear"} : {...x,status: "Danger"}: {...x, status: "None"}).map(moveObs)
+        return s.obstacles.map(x => x.type === "croc" ? s.time % 800 - (s.level*20) > 250 ? <Obstacle> {...x, status: "Clear"} : {...x,status: "Danger"}: {...x, status: "None"}).map(moveObs)
       }
     }
 
