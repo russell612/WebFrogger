@@ -152,6 +152,7 @@ function main() {
 
   function winConditionHandler(s:state, wonSquare: Obstacle[]): state {
 
+    // Creates a winning frog at the middle of the winning square
     const createWinFrog = () => {
       return <Frog>{
         id: wonSquare[0].id + "frog",
@@ -160,7 +161,7 @@ function main() {
         radius: 30
       }
     }
-
+    // Returns state based on if the player has been to that winning square before or not
     return <state> {
       ...s,
       frog: {
@@ -256,7 +257,7 @@ function main() {
     }
 
 
-  // Adds random backgrounds into the mix for additional levels and adds them into the background array of the game state
+  // Adds backgrounds into the mix for additional levels and adds them into the background array of the game state
   function createBackgrounds(s: state): state {
     const nextType = (s:number) => s <= 3 ? "river" : "ground";
     const background = [...Array(CONSTANTS.Rows)]
@@ -343,7 +344,7 @@ function main() {
 
     const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
-
+    // Creates the frog if not yet initialized
     const createFrogView = (f: Frog) => {
       const frog = document.createElementNS(svg.namespaceURI, "circle");
       frog.setAttribute("id", f.id);
@@ -357,13 +358,13 @@ function main() {
 
 
 
-
+    // Updates the frog's position
     const frog = document.getElementById("frog") || createFrogView(state.frog);
     frog.setAttribute("cx", `${state.frog.pos.x}`);
     frog.setAttribute("cy", `${state.frog.pos.y}`);
 
 
-
+    // Updates the background when needed
     state.background.forEach(b => {
       const createObstacleView = () => {
         const v = document.createElementNS(svg.namespaceURI, "rect")!;
@@ -381,7 +382,7 @@ function main() {
     })
 
 
-
+    // Used in moving obstacles and changing color based on status 
     state.obstacles.forEach(b => {
       const createObstacleView = () => {
         const v = document.createElementNS(svg.namespaceURI, "rect")!;
@@ -404,7 +405,7 @@ function main() {
       v.setAttribute("y", String(b.pos.y));
     })
 
-
+    // Used to make sure frog is on top of all obstacles
     const createUpdateFrog = () => {    
       const elem = document.createElementNS(svg.namespaceURI, "use");
       elem.setAttribute("href", "#frog");
@@ -412,6 +413,7 @@ function main() {
       svg.appendChild(elem);
     }
 
+    // Function to create the Score text on the game
     const createScore = () => {
       const v = document.createElementNS(svg.namespaceURI, "text")!;
       v.setAttribute("id", "scoreValue")
@@ -424,6 +426,7 @@ function main() {
       return v
     }
 
+    // Function to create the Lives text on the game
     const createLives = () => {
       const v = document.createElementNS(svg.namespaceURI, "text");
       v.setAttribute("id", "lifeValue")
@@ -436,6 +439,7 @@ function main() {
       return v
     }
 
+    // Function to create the High Score text on the game
     const createHighScore = () => {
       const v = document.createElementNS(svg.namespaceURI, "text");
       v.setAttribute("id", "highScore")
@@ -448,6 +452,7 @@ function main() {
       return v
     }
 
+    // Function to create the Level text on the game
     const createLevelDisplay = () => {
       const v = document.createElementNS(svg.namespaceURI, "text");
       v.setAttribute("id", "level")
@@ -460,6 +465,7 @@ function main() {
       return v
     }
 
+    // Adds a new Winning Frog on the display if not yet added.
     state.frogWinPos.forEach(b => {
       const createWinFrogSVG = () => {
         const frog = document.createElementNS(svg.namespaceURI, "circle")!;
