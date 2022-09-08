@@ -268,11 +268,6 @@ function main() {
     }
   }
 
-
-
-  //Boolean used to check if the obstacle is on top of a river. 
-  const riverCollided = ([a,b]:[number,Obstacle]) => b.type === "river" && a > b.pos.y && a < b.pos.y + b.height  
-
   //Function used to generate obstacles for an empty state 
   function createObstacles(s: state): state{
 
@@ -539,10 +534,6 @@ function main() {
     }
   }
 
-  /**
-   * This is the view for your game to add and update your game elements.
-   */
-  const svg = document.querySelector("#svgCanvas") as SVGElement & HTMLElement;
 
 
   // Creates a Frog Object at the starting position
