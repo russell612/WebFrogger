@@ -198,9 +198,6 @@ function main() {
   class Tick { constructor(public readonly time: number) {}};
 
 
-
-
-
   // Function to return the frog back to the opposite side of the canvas if it has passed through
   // the canvas boundaries, won't work for y-axis to prevent cheating
   const 
@@ -291,7 +288,7 @@ function main() {
       const obstacleRow3 = [...Array(Constants.ObstaclesPerRow)]
       .map((_,i) => riverCollided([510, s.background[5]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 50)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("None"):
       createObstacle("croc")(i + 50)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 510))(new Vec(1.2 * s.level, 0))("Danger"):  
-      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 - i*20, 510))(new Vec(1.3 * s.level, 0))("None"));
+      createObstacle("rect-ground")(i + 50)(Constants.MininumObstacleWidth - 70 + s.level*5)(Constants.ObstacleHeight)(new Vec(i*300 + s.rngSeed*s.level, 510))(new Vec(1.3 * s.level, 0))("None"));
       const obstacleRow4 = [...Array(Constants.ObstaclesPerRow)]
       .map((_,i) => riverCollided([610, s.background[6]]) ? i % 2 == 0 ? createObstacle("rect-river")(i + 60)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("None"):
       createObstacle("croc")(i + 60)(Constants.MininumObstacleWidth - s.level*20)(Constants.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 610))(new Vec(-0.7 * s.level, 0))("Danger"): 
@@ -457,6 +454,18 @@ function main() {
       return v
     }
 
+    const createLevelDisplay = () => {
+      const v = document.createElementNS(svg.namespaceURI, "text");
+      v.setAttribute("id", "level")
+      v.setAttribute("class", "level");
+      v.setAttribute("x", "200");
+      v.setAttribute("y", "830");
+      v.setAttribute("style", "fill: white;");
+      v.textContent = String(0);
+      svg.appendChild(v);
+      return v
+    }
+
     state.frogWinPos.forEach(b => {
       const createWinFrogSVG = () => {
         const frog = document.createElementNS(svg.namespaceURI, "circle")!;
@@ -502,6 +511,8 @@ function main() {
     const lives = document.getElementById("lifeValue") || createLives();
     lives.textContent = state.lives < 0 ? "0" : String(state.lives);
     const score = document.getElementById("scoreValue") || createScore();
+    const level = document.getElementById("level") || createLevelDisplay();
+    level.textContent = String(Math.round(((state.level - 1) * 10)+1));
     score.textContent = String(state.score);
     const update = document.getElementById("frogUpdate") || createUpdateFrog();
 
