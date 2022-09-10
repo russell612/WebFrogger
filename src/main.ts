@@ -515,7 +515,6 @@ function main() {
     })
 
     state.fly.forEach(b => {
-      console.log(b)
       const createFly = () => {
         const fly = document.createElementNS(svg.namespaceURI, "rect")!;
         fly.setAttribute("id", b.id);
