@@ -149,7 +149,7 @@ function main() {
         return s.fly
       }
       else {
-        return s.fly.map(x=> (s.time % 800 - (s.level*20)) > 250 ? <Obstacle>{...x, status: "non-hidden"} : {...x, status:"hidden"})
+        return s.fly.map(x=> (s.time % 600 - (s.level*30)) <  250 ? <Obstacle>{...x, status: "non-hidden"} : {...x, status:"hidden"})
       }
     }
 
