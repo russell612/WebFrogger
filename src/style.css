@@ -35,3 +35,7 @@ p.highlight {
     fill:white;
     text-anchor: middle;
 }
+
+.hidden {
+    visibility: hidden;
+}

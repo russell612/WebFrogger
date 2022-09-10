@@ -57,6 +57,8 @@ function main() {
     scoreOnLevel: number;
     highScore: number;
     reset: boolean;
+    fly: ReadonlyArray<Obstacle>;
+    flyEaten : boolean
   }>
 
   // Constant Storage
@@ -97,7 +99,8 @@ function main() {
     //The win condition of the game
     winCondition = (a: Frog) => a.pos.y < 100,
     //wonSquare is using bodiesCollided to check which winning square has the frog entered
-    wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r => bodiesCollided([s.frog, r]))
+    wonSquare = s.obstacles.filter(r => r.pos.y === 0).filter(r=> r.type === "goal").filter(r => bodiesCollided([s.frog, r])),
+    frogColliddedFly = s.fly.filter(r=>bodiesCollided([s.frog, r]))
 
     // Checks if the level is finished, it will return a state with the reset boolean true to indicate removing all svg elements to start a new level.
     if (s.frogWins === 5 && s.reset === false) {
@@ -126,9 +129,10 @@ function main() {
     }
 
     if (winCondition(s.frog)) {
-      return winConditionHandler(s, wonSquare)
+      return winConditionHandler(s, wonSquare, frogColliddedFly)
     }
-    function handleObstacles() {
+
+    function handleObstacles(): ReadonlyArray<Obstacle> {
       if(s.gameOver) {
         // If game over, no need to update obstacles
         return s.obstacles
@@ -139,10 +143,21 @@ function main() {
       }
     }
 
+    //Function to handle the visibility of the fly
+    function handleFly(): ReadonlyArray<Obstacle> {
+      if (s.fly.length === 0) {
+        return s.fly
+      }
+      else {
+        return s.fly.map(x=> (s.time % 800 - (s.level*20)) > 250 ? <Obstacle>{...x, status: "non-hidden"} : {...x, status:"hidden"})
+      }
+    }
+
 
     return <state> { // Returns a general new tick to check for winCondition and collisions
       ...s,
       obstacles: handleObstacles(), // Function for ease of reading
+      fly: handleFly(),
       time: elapsed,
       gameOver: frogRiver ? (frogCollidedRiver || frogCollidedCroc) : frogCollidedGround,
       highScore: s.score > s.highScore ? s.score : s.highScore,
@@ -150,7 +165,7 @@ function main() {
     }
   }
 
-  function winConditionHandler(s:state, wonSquare: Obstacle[]): state {
+  function winConditionHandler(s:state, wonSquare: Obstacle[], fly: Obstacle[]): state {
 
     // Creates a winning frog at the middle of the winning square
     const createWinFrog = () => {
@@ -161,6 +176,21 @@ function main() {
         radius: 30
       }
     }
+
+    function scoreHandler(): number {
+      if (s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0) {
+        return s.score
+      }
+      else if (fly.length !== 0 && fly[0].status === "hidden") {
+        return s.score + 900
+      }
+      else if (fly.length === 0) {
+        return s.score + 900
+      }
+      else {
+        return s.score + 1900
+      }
+    }
     // Returns state based on if the player has been to that winning square before or not
     return <state> {
       ...s,
@@ -169,9 +199,10 @@ function main() {
         pos: new Vec(450, CONSTANTS.CanvasSize - 50) //Resets frog back to original position
       },
       frogWins: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.frogWins : s.frogWins + 1, // Checks if the player has gotten this square before, will not add frogWins, score bonus and create a new Winning Frog if true.
-      score: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ? s.score : s.score + 900,
+      score: scoreHandler(),
       frogWinPos: s.frogWinPos.filter(x => x.id === wonSquare[0].id + "frog").length !== 0 ?  s.frogWinPos : [createWinFrog()].concat(s.frogWinPos),
-      scoreOnLevel: 0 
+      scoreOnLevel: 0,
+      fly: fly.length !== 0 ? fly[0].status === "hidden" ? s.fly : [] : s.fly,
     }
   }
 
@@ -235,7 +266,7 @@ function main() {
   // reset function to help in resetting back to first level
   function reset(s:state) {
     return <state>{
-      ...s, gameOver: false, objCount: 0, score: 0, frogWins: 0, level: 1, rngSeed: 80, lives: 5, scoreOnLevel: 0, highScore: s.highScore, reset: true
+      ...s, gameOver: false, objCount: 0, score: 0, frogWins: 0, level: 0.9, rngSeed: 80, lives: 5, scoreOnLevel: 0, highScore: s.highScore, reset: true
     }
   }
   // Function moveObs to move Obstacles
@@ -244,8 +275,9 @@ function main() {
     pos: torusWrap(o.pos.sub(o.vel))
   }
 
+  type ObstacleType = "rect-ground" | "rect-river" | "croc" | "river" | "ground" | "goal" | "fly"
   // Function to create obstacles or background
-  const createObstacle = (type: "rect-ground" | "rect-river" | "croc" | "river" | "ground" | "goal") => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) => (status: string) =>
+  const createObstacle = (type: ObstacleType) => (id: number) => (width: number) => (height : number) => (pos: Vec) => (vel:Vec) => (status: string) =>
     <Obstacle> {
       pos: pos,
       vel: vel,
@@ -289,18 +321,20 @@ function main() {
       const obstacleRow4 = [...Array(CONSTANTS.ObstaclesPerRow)]
       .map((_,i) =>  
       createObstacle("rect-ground")(i + 60)(CONSTANTS.MininumObstacleWidth - 70 + s.level*5)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20, 610))(new Vec(-0.7 * s.level, 0))("None"));
-      const obstacleRow5 = [...Array(CONSTANTS.CanvasSize/100)]
+      const obstacleRow5 = [...Array(5)]
       .map((_,i) => createObstacle("goal")(i)(CONSTANTS.CanvasSize/5)(CONSTANTS.BackgroundHeight)(new Vec(i * CONSTANTS.CanvasSize/5, 0))(new Vec(0, 0))("None"));
       const obstacleRow6 = [...Array(CONSTANTS.ObstaclesPerRow)]
       .map((_,i) => 
       createObstacle("rect-ground")(i + 70)(CONSTANTS.MininumObstacleWidth - 70 + s.level*20)(CONSTANTS.ObstacleHeight)(new Vec(i*300 - i*20 + s.rngSeed*s.level, 710))(new Vec(0.33 * s.level, 0))("None"));
 
+      const flyRow = [createObstacle("fly")(1000)(20)(20)(new Vec(440 + (CONSTANTS.CanvasSize/5)*Math.round((s.level - 1)*10)%CONSTANTS.CanvasSize, 40))(new Vec(0, 0))("hidden")]
 
       // Concatenates all obstacles into one array
-    const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5, obstacleRow6);
+    const startingObstacles = obstacleRow1.concat(obstacleRow2, obstacleRow3, obstacleRow4, obstacleRow0, obstacleRow5, obstacleRow6, flyRow);
     return <state> {
       ...s,
-      obstacles: startingObstacles
+      obstacles: startingObstacles,
+      fly: flyRow
     }
   }
 
@@ -309,7 +343,7 @@ function main() {
   // Initialises the initial state with new obstacles and backgrounds
   function stateInit(s?: state): state {
 
-    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 0, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore, reset: false} : {time: 0, gameOver: false, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0, reset: false};
+    const initState: state = s ? {...s, obstacles: [], background: [], frog: createFrog(), frogWins: 0, level: s.level + 0.1, rngSeed: s.rngSeed + 120, frogWinPos: [], lives: s.lives, scoreOnLevel: 0, highScore: s.highScore, reset: false, fly: [], flyEaten: false} : {time: 0, gameOver: false, obstacles: [], background: [], frog: createFrog(), score: 0, frogWins: 0, level: 1, rngSeed: 200, frogWinPos: [], lives: 5, scoreOnLevel: 0, highScore: 0, reset: false, fly:[], flyEaten: false};
     const stateWithBg: state = createBackgrounds(initState)
     const finalStartState: state = createObstacles(stateWithBg);
 
@@ -465,7 +499,7 @@ function main() {
       return v
     }
 
-    // Adds a new Winning Frog on the display if not yet added.
+    // Adds a new Winning Frog on the display if not yet added. 
     state.frogWinPos.forEach(b => {
       const createWinFrogSVG = () => {
         const frog = document.createElementNS(svg.namespaceURI, "circle")!;
@@ -478,6 +512,21 @@ function main() {
         return frog;
       }
       const v = document.getElementById(b.id) || createWinFrogSVG();
+    })
+
+    state.fly.forEach(b => {
+      console.log(b)
+      const createFly = () => {
+        const fly = document.createElementNS(svg.namespaceURI, "rect")!;
+        fly.setAttribute("id", b.id);
+        fly.setAttribute("x", String(b.pos.x));
+        fly.setAttribute("y", String(b.pos.y));
+        fly.setAttribute("width", String(b.width));
+        fly.setAttribute("height", String(b.height));
+        return fly
+      }
+      const v = document.getElementById(b.id) || createFly();
+      b.status === "hidden" ? v.setAttribute("class", "hidden") : v.removeAttribute("class")
     })
 
 
