@@ -1,5 +1,5 @@
 # Web Frogger Game/Project
-This game utilizes typescript with declarative programming to run.
+This game utilizes typescript with declarative programming to run. It uses the RxJS framework for using observables which is used throughout the project to monitor game state and actions inputted by the user or thorugh the natural intervals that occur without user input.
 
 # Overview
 From the code base, the main subscription observable, which has an observable stream of
